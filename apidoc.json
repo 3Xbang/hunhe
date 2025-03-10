@@ -1,0 +1,20 @@
+{
+  "name": "项目管理系统",
+  "version": "1.0.0",
+  "description": "项目管理系统 API 文档",
+  "title": "项目管理系统 API",
+  "url": "http://localhost:3000",
+  "sampleUrl": "http://localhost:3000",
+  "template": {
+    "withGenerator": false,
+    "withCompare": true
+  },
+  "header": {
+    "title": "概述",
+    "filename": "header.md"
+  },
+  "footer": {
+    "title": "状态码说明",
+    "filename": "footer.md"
+  }
+} 
