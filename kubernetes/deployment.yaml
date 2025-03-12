@@ -42,24 +42,30 @@ spec:
                   key: jwt-secret
           resources:
             limits:
-              cpu: "300m"
-              memory: "256Mi"
+              cpu: "400m"
+              memory: "384Mi"
             requests:
               cpu: "100m"
               memory: "128Mi"
+          startupProbe:
+            httpGet:
+              path: /health
+              port: 3000
+            failureThreshold: 30
+            periodSeconds: 10
           livenessProbe:
             httpGet:
               path: /health
               port: 3000
-            initialDelaySeconds: 30
-            periodSeconds: 10
+            initialDelaySeconds: 60
+            periodSeconds: 20
             timeoutSeconds: 5
             failureThreshold: 3
           readinessProbe:
             httpGet:
               path: /health
               port: 3000
-            initialDelaySeconds: 5
+            initialDelaySeconds: 20
             periodSeconds: 10
             timeoutSeconds: 2
             failureThreshold: 3
@@ -68,4 +74,4 @@ spec:
               mountPath: /app/logs
       volumes:
         - name: logs
-          emptyDir: {}           emptyDir: {}
+          emptyDir: {}
