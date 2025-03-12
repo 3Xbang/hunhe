@@ -1,3 +1,9 @@
+#!/bin/bash
+
+echo "===== 修复应用程序入口点问题 ====="
+
+# 1. 创建一个新的Dockerfile，修复入口点问题
+cat > Dockerfile.fixed << EOF
 FROM node:18-alpine as builder
 
 # 创建工作目录
@@ -53,4 +59,21 @@ RUN echo '#!/bin/sh' > /app/entrypoint.sh && \
     chmod +x /app/entrypoint.sh
 
 # 启动应用 - 使用绝对路径确保在任何工作目录下都能正确启动
-CMD ["/app/entrypoint.sh"] 
+CMD ["/app/entrypoint.sh"]
+EOF
+
+# 2. 使用新的Dockerfile构建镜像
+echo "构建修复后的Docker镜像..."
+docker build -f Dockerfile.fixed -t docker.io/3xbang/construction-app:fixed-entrypoint-$(date +%Y%m%d) -t docker.io/3xbang/construction-app:latest .
+
+# 3. 推送镜像到仓库
+echo "推送镜像到仓库..."
+docker push docker.io/3xbang/construction-app:fixed-entrypoint-$(date +%Y%m%d)
+docker push docker.io/3xbang/construction-app:latest
+
+# 4. 提示更新部署
+echo "===== 修复完成 ====="
+echo "请在Sealos仪表板上执行以下操作："
+echo "1. 找到您的部署 'gybang1-release-lazgll'"
+echo "2. 执行 'kubectl rollout restart deployment/gybang1-release-lazgll -n ns-jrnsq1vz'"
+echo "3. 观察新的容器日志" 
