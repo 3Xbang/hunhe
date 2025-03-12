@@ -31,12 +31,14 @@ RUN addgroup -S appgroup && adduser -S appuser -G appgroup
 RUN chown -R appuser:appgroup /app
 USER appuser
 
+# 设置Node.js内存限制
+ENV NODE_OPTIONS="--max-old-space-size=200"
+
 # 暴露端口
 EXPOSE 3000
 
 # 设置环境变量
 ENV NODE_ENV=production
-ENV NODE_OPTIONS="--max-old-space-size=200"
 
 # 启动应用
 CMD ["node", "src/app.js"] 

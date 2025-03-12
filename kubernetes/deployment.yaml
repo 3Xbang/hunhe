@@ -42,11 +42,11 @@ spec:
                   key: jwt-secret
           resources:
             limits:
-              cpu: "500m"
-              memory: "512Mi"
+              cpu: "300m"
+              memory: "256Mi"
             requests:
               cpu: "100m"
-              memory: "256Mi"
+              memory: "128Mi"
           livenessProbe:
             httpGet:
               path: /health
@@ -68,4 +68,4 @@ spec:
               mountPath: /app/logs
       volumes:
         - name: logs
-          emptyDir: {} 
+          emptyDir: {}           emptyDir: {}
