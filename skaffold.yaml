@@ -1,0 +1,59 @@
+apiVersion: skaffold/v2beta29
+kind: Config
+metadata:
+  name: construction-app
+build:
+  artifacts:
+  - image: construction-app
+    docker:
+      dockerfile: Dockerfile
+      buildArgs:
+        NODE_ENV: development
+    sync:
+      manual:
+        - src: "src/**/*.js"
+          dest: /app/src
+        - src: "package.json"
+          dest: /app
+  tagPolicy:
+    sha256: {}  # 使用更高效的标记策略
+  local:
+    push: false  # 开发环境不需要推送到远程仓库
+    useDockerCLI: true  # 使用本地Docker CLI
+    useBuildkit: true   # 启用BuildKit加速构建
+    concurrency: 0      # 限制并发构建数
+deploy:
+  kubectl:
+    manifests:
+    - kubernetes/configmap.yaml
+    - kubernetes/service.yaml
+    - kubernetes/dev-deployment.yaml
+  statusCheckDeadlineSeconds: 300  # 增加状态检查超时时间
+  # 开发环境不部署生产环境的资源
+  kustomize:
+    paths: ["kustomize/overlays/development"]
+portForward:
+  - resourceType: deployment
+    resourceName: construction-app-dev
+    port: 3000
+    localPort: 3000  # 端口转发，方便本地访问
+profiles:
+  - name: prod
+    build:
+      artifacts:
+      - image: construction-app
+        docker:
+          dockerfile: Dockerfile
+      tagPolicy:
+        sha256: {}
+      local:
+        push: true
+        useBuildkit: true
+    deploy:
+      kubectl:
+        manifests:
+        - kubernetes/configmap.yaml
+        - kubernetes/secret.yaml  # 生产环境包含密钥配置
+        - kubernetes/service.yaml
+        - kubernetes/deployment.yaml
+        - kubernetes/ingress.yaml 

@@ -3,7 +3,7 @@
  */
 const express = require('express');
 const router = express.Router();
-const { auth, checkRole } = require('../middlewares/auth');
+const { authenticate, authorize } = require('../middlewares/auth');
 const { uploadMiddleware } = require('../middlewares/upload');
 const materialProvider = require('../providers/material.provider');
 const {
@@ -20,8 +20,8 @@ const {
  * @access Private
  */
 router.post('/',
-  auth,
-  checkRole(['admin', 'manager']),
+  authenticate,
+  authorize(['admin', 'manager']),
   uploadMiddleware.array('attachments'),
   validateCreateMaterial,
   async (req, res, next) => {
@@ -48,7 +48,7 @@ router.post('/',
  * @access Private
  */
 router.get('/',
-  auth,
+  authenticate,
   validateQueryMaterials,
   async (req, res, next) => {
     try {
@@ -70,7 +70,7 @@ router.get('/',
  * @access Private
  */
 router.get('/:id',
-  auth,
+  authenticate,
   async (req, res, next) => {
     try {
       const material = await materialProvider.getMaterial(req.params.id);
@@ -90,8 +90,8 @@ router.get('/:id',
  * @access Private
  */
 router.patch('/:id',
-  auth,
-  checkRole(['admin', 'manager']),
+  authenticate,
+  authorize(['admin', 'manager']),
   uploadMiddleware.array('attachments'),
   validateUpdateMaterial,
   async (req, res, next) => {
@@ -118,8 +118,8 @@ router.patch('/:id',
  * @access Private
  */
 router.post('/:id/inbound',
-  auth,
-  checkRole(['admin', 'manager', 'warehouse']),
+  authenticate,
+  authorize(['admin', 'manager', 'warehouse']),
   uploadMiddleware.array('attachments'),
   validateInbound,
   async (req, res, next) => {
@@ -147,8 +147,8 @@ router.post('/:id/inbound',
  * @access Private
  */
 router.post('/:id/outbound',
-  auth,
-  checkRole(['admin', 'manager', 'warehouse']),
+  authenticate,
+  authorize(['admin', 'manager', 'warehouse']),
   validateOutbound,
   async (req, res, next) => {
     try {
@@ -174,8 +174,8 @@ router.post('/:id/outbound',
  * @access Private
  */
 router.get('/stats/low-stock',
-  auth,
-  checkRole(['admin', 'manager', 'warehouse']),
+  authenticate,
+  authorize(['admin', 'manager', 'warehouse']),
   async (req, res, next) => {
     try {
       const materials = await materialProvider.getLowStockMaterials();
@@ -195,8 +195,8 @@ router.get('/stats/low-stock',
  * @access Private
  */
 router.get('/stats/overview',
-  auth,
-  checkRole(['admin', 'manager']),
+  authenticate,
+  authorize(['admin', 'manager']),
   async (req, res, next) => {
     try {
       const stats = await materialProvider.getMaterialStats();

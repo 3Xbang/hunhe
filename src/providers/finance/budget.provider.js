@@ -1,9 +1,11 @@
 /**
  * 预算管理服务提供者
  */
-const { Budget } = require('../../models/finance/budget.model');
+const mongoose = require('mongoose');
+const { Budget, BudgetItem } = require('../../models/finance.model');
 const { generateCode } = require('../../utils/codeGenerator');
-const { ApiError } = require('../../utils/apiError');
+const { AppError } = require('../../utils/appError');
+const { formatPaginatedResponse } = require('../../utils/helpers');
 
 class BudgetProvider {
   /**
@@ -16,7 +18,7 @@ class BudgetProvider {
     // 计算预算项目总额
     const totalPlannedAmount = budgetData.items.reduce((sum, item) => sum + item.plannedAmount, 0);
     if (totalPlannedAmount !== budgetData.amount) {
-      throw new ApiError(400, '预算项目总额与预算金额不符');
+      throw new AppError(400, '预算项目总额与预算金额不符');
     }
 
     const budget = new Budget({
@@ -86,7 +88,7 @@ class BudgetProvider {
       .populate('approvals.approver', 'username');
 
     if (!budget) {
-      throw new ApiError(404, '预算不存在');
+      throw new AppError(404, '预算不存在');
     }
 
     return budget;
@@ -98,19 +100,19 @@ class BudgetProvider {
   async updateBudget(id, updateData) {
     const budget = await Budget.findById(id);
     if (!budget) {
-      throw new ApiError(404, '预算不存在');
+      throw new AppError(404, '预算不存在');
     }
 
     // 检查预算状态
     if (budget.status !== 'draft') {
-      throw new ApiError(400, '只能修改草稿状态的预算');
+      throw new AppError(400, '只能修改草稿状态的预算');
     }
 
     // 如果更新预算项目，需要验证总额
     if (updateData.items) {
       const totalPlannedAmount = updateData.items.reduce((sum, item) => sum + item.plannedAmount, 0);
       if (totalPlannedAmount !== (updateData.amount || budget.amount)) {
-        throw new ApiError(400, '预算项目总额与预算金额不符');
+        throw new AppError(400, '预算项目总额与预算金额不符');
       }
     }
 
@@ -125,11 +127,11 @@ class BudgetProvider {
   async submitBudget(id) {
     const budget = await Budget.findById(id);
     if (!budget) {
-      throw new ApiError(404, '预算不存在');
+      throw new AppError(404, '预算不存在');
     }
 
     if (budget.status !== 'draft') {
-      throw new ApiError(400, '只能提交草稿状态的预算');
+      throw new AppError(400, '只能提交草稿状态的预算');
     }
 
     budget.status = 'pending';
@@ -143,11 +145,11 @@ class BudgetProvider {
   async approveBudget(id, approvalData) {
     const budget = await Budget.findById(id);
     if (!budget) {
-      throw new ApiError(404, '预算不存在');
+      throw new AppError(404, '预算不存在');
     }
 
     if (budget.status !== 'pending') {
-      throw new ApiError(400, '只能审批待审核状态的预算');
+      throw new AppError(400, '只能审批待审核状态的预算');
     }
 
     budget.approvals.push({
@@ -167,15 +169,15 @@ class BudgetProvider {
   async updateBudgetUsage(id, amount) {
     const budget = await Budget.findById(id);
     if (!budget) {
-      throw new ApiError(404, '预算不存在');
+      throw new AppError(404, '预算不存在');
     }
 
     if (budget.status !== 'approved') {
-      throw new ApiError(400, '只能使用已审批的预算');
+      throw new AppError(400, '只能使用已审批的预算');
     }
 
     if (budget.usedAmount + amount > budget.amount) {
-      throw new ApiError(400, '超出预算金额');
+      throw new AppError(400, '超出预算金额');
     }
 
     budget.usedAmount += amount;

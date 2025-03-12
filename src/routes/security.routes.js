@@ -32,7 +32,7 @@
 const express = require('express');
 const router = express.Router();
 const { SecurityProvider } = require('../providers/security.provider');
-const { auth } = require('../middlewares/auth');
+const { authenticate } = require('../middlewares/auth');
 const { upload } = require('../middlewares/upload');
 const {
   validateCreateRiskAssessment,
@@ -116,7 +116,7 @@ const securityProvider = new SecurityProvider();
  */
 router.post(
   '/risk-assessments',
-  auth,
+  authenticate,
   upload.array('attachments'),
   validateCreateRiskAssessment,
   async (req, res, next) => {
@@ -180,7 +180,7 @@ router.post(
  *       }
  *     }
  */
-router.get('/risk-assessments', auth, async (req, res, next) => {
+router.get('/risk-assessments', authenticate, async (req, res, next) => {
   try {
     const result = await securityProvider.getRiskAssessments(req.query);
     res.json({
@@ -215,7 +215,7 @@ router.get('/risk-assessments', auth, async (req, res, next) => {
  *       }
  *     }
  */
-router.get('/risk-assessments/:id', auth, async (req, res, next) => {
+router.get('/risk-assessments/:id', authenticate, async (req, res, next) => {
   try {
     const assessment = await securityProvider.getRiskAssessment(req.params.id);
     res.json({
@@ -244,7 +244,7 @@ router.get('/risk-assessments/:id', auth, async (req, res, next) => {
  */
 router.patch(
   '/risk-assessments/:id',
-  auth,
+  authenticate,
   upload.array('attachments'),
   validateUpdateRiskAssessment,
   async (req, res, next) => {
@@ -289,7 +289,7 @@ router.patch(
  */
 router.patch(
   '/risk-assessments/:id/review',
-  auth,
+  authenticate,
   validateReviewRiskAssessment,
   async (req, res, next) => {
     try {
@@ -330,7 +330,7 @@ router.patch(
  */
 router.post(
   '/incidents',
-  auth,
+  authenticate,
   upload.array('attachments'),
   validateCreateIncident,
   async (req, res, next) => {
@@ -359,7 +359,7 @@ router.post(
 );
 
 // 获取安全事故列表
-router.get('/incidents', auth, async (req, res, next) => {
+router.get('/incidents', authenticate, async (req, res, next) => {
   try {
     const result = await securityProvider.getIncidents(req.query);
     res.json({
@@ -372,7 +372,7 @@ router.get('/incidents', auth, async (req, res, next) => {
 });
 
 // 获取单个安全事故
-router.get('/incidents/:id', auth, async (req, res, next) => {
+router.get('/incidents/:id', authenticate, async (req, res, next) => {
   try {
     const incident = await securityProvider.getIncident(req.params.id);
     res.json({
@@ -387,7 +387,7 @@ router.get('/incidents/:id', auth, async (req, res, next) => {
 // 更新安全事故
 router.patch(
   '/incidents/:id',
-  auth,
+  authenticate,
   upload.array('attachments'),
   validateUpdateIncident,
   async (req, res, next) => {
@@ -421,7 +421,7 @@ router.patch(
 // 审核安全事故
 router.patch(
   '/incidents/:id/review',
-  auth,
+  authenticate,
   validateReviewIncident,
   async (req, res, next) => {
     try {
@@ -449,7 +449,7 @@ router.patch(
 // 创建安全检查
 router.post(
   '/inspections',
-  auth,
+  authenticate,
   upload.array('attachments'),
   validateCreateInspection,
   async (req, res, next) => {
@@ -520,7 +520,7 @@ router.post(
 );
 
 // 获取安全检查列表
-router.get('/inspections', auth, async (req, res, next) => {
+router.get('/inspections', authenticate, async (req, res, next) => {
   try {
     const result = await securityProvider.getInspections(req.query);
     res.json({
@@ -533,7 +533,7 @@ router.get('/inspections', auth, async (req, res, next) => {
 });
 
 // 获取单个安全检查
-router.get('/inspections/:id', auth, async (req, res, next) => {
+router.get('/inspections/:id', authenticate, async (req, res, next) => {
   try {
     const inspection = await securityProvider.getInspection(req.params.id);
     res.json({
@@ -548,7 +548,7 @@ router.get('/inspections/:id', auth, async (req, res, next) => {
 // 更新安全检查
 router.patch(
   '/inspections/:id',
-  auth,
+  authenticate,
   upload.array('attachments'),
   validateUpdateInspection,
   async (req, res, next) => {
@@ -621,7 +621,7 @@ router.patch(
 // 审核安全检查
 router.patch(
   '/inspections/:id/review',
-  auth,
+  authenticate,
   validateReviewInspection,
   async (req, res, next) => {
     try {
@@ -649,7 +649,7 @@ router.patch(
 // 创建安全培训
 router.post(
   '/trainings',
-  auth,
+  authenticate,
   upload.fields([
     { name: 'attachments', maxCount: 10 },
     { name: 'materials', maxCount: 10 }
@@ -693,7 +693,7 @@ router.post(
 );
 
 // 获取安全培训列表
-router.get('/trainings', auth, async (req, res, next) => {
+router.get('/trainings', authenticate, async (req, res, next) => {
   try {
     const result = await securityProvider.getTrainings(req.query);
     res.json({
@@ -706,7 +706,7 @@ router.get('/trainings', auth, async (req, res, next) => {
 });
 
 // 获取单个安全培训
-router.get('/trainings/:id', auth, async (req, res, next) => {
+router.get('/trainings/:id', authenticate, async (req, res, next) => {
   try {
     const training = await securityProvider.getTraining(req.params.id);
     res.json({
@@ -721,7 +721,7 @@ router.get('/trainings/:id', auth, async (req, res, next) => {
 // 更新安全培训
 router.patch(
   '/trainings/:id',
-  auth,
+  authenticate,
   upload.fields([
     { name: 'attachments', maxCount: 10 },
     { name: 'materials', maxCount: 10 }
@@ -770,7 +770,7 @@ router.patch(
 // 记录培训出勤
 router.patch(
   '/trainings/:id/trainees/:traineeId/attendance',
-  auth,
+  authenticate,
   validateRecordAttendance,
   async (req, res, next) => {
     try {
@@ -795,7 +795,7 @@ router.patch(
 // 记录培训考试
 router.patch(
   '/trainings/:id/trainees/:traineeId/test',
-  auth,
+  authenticate,
   validateRecordTest,
   async (req, res, next) => {
     try {
@@ -820,7 +820,7 @@ router.patch(
 // 评估培训
 router.patch(
   '/trainings/:id/evaluate',
-  auth,
+  authenticate,
   validateEvaluateTraining,
   async (req, res, next) => {
     try {
@@ -885,7 +885,7 @@ router.patch(
  *       }
  *     }
  */
-router.get('/stats', auth, async (req, res, next) => {
+router.get('/stats', authenticate, async (req, res, next) => {
   try {
     const stats = await securityProvider.getSecurityStats(req.query);
     res.json({

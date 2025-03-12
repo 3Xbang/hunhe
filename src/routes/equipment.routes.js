@@ -3,7 +3,7 @@
  */
 const express = require('express');
 const router = express.Router();
-const { auth, checkRole } = require('../middlewares/auth');
+const { authenticate, authorize } = require('../middlewares/auth');
 const { uploadMiddleware } = require('../middlewares/upload');
 const equipmentProvider = require('../providers/equipment.provider');
 const {
@@ -20,8 +20,8 @@ const {
  * @access Private
  */
 router.post('/',
-  auth,
-  checkRole(['admin', 'manager']),
+  authenticate,
+  authorize(['admin', 'manager']),
   uploadMiddleware.array('attachments'),
   validateCreateEquipment,
   async (req, res, next) => {
@@ -48,7 +48,7 @@ router.post('/',
  * @access Private
  */
 router.get('/',
-  auth,
+  authenticate,
   validateQueryEquipments,
   async (req, res, next) => {
     try {
@@ -70,7 +70,7 @@ router.get('/',
  * @access Private
  */
 router.get('/:id',
-  auth,
+  authenticate,
   async (req, res, next) => {
     try {
       const equipment = await equipmentProvider.getEquipment(req.params.id);
@@ -90,8 +90,8 @@ router.get('/:id',
  * @access Private
  */
 router.patch('/:id',
-  auth,
-  checkRole(['admin', 'manager']),
+  authenticate,
+  authorize(['admin', 'manager']),
   uploadMiddleware.array('attachments'),
   validateUpdateEquipment,
   async (req, res, next) => {
@@ -118,7 +118,7 @@ router.patch('/:id',
  * @access Private
  */
 router.post('/:id/usage',
-  auth,
+  authenticate,
   validateRecordUsage,
   async (req, res, next) => {
     try {
@@ -143,8 +143,8 @@ router.post('/:id/usage',
  * @access Private
  */
 router.post('/:id/maintenance',
-  auth,
-  checkRole(['admin', 'manager', 'maintenance']),
+  authenticate,
+  authorize(['admin', 'manager', 'maintenance']),
   uploadMiddleware.array('attachments'),
   validateRecordMaintenance,
   async (req, res, next) => {
@@ -171,8 +171,8 @@ router.post('/:id/maintenance',
  * @access Private
  */
 router.get('/stats/overview',
-  auth,
-  checkRole(['admin', 'manager']),
+  authenticate,
+  authorize(['admin', 'manager']),
   async (req, res, next) => {
     try {
       const stats = await equipmentProvider.getEquipmentStats();

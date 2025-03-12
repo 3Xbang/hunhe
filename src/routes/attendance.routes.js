@@ -4,7 +4,7 @@
 const express = require('express');
 const multer = require('multer');
 const { AttendanceProvider } = require('../providers/attendance.provider');
-const { auth } = require('../middlewares/auth');
+const { authenticate } = require('../middlewares/auth');
 const {
   validateCheckIn,
   validateCheckOut,
@@ -24,7 +24,7 @@ const attendanceProvider = new AttendanceProvider();
  * @access Private
  */
 router.post('/check-in', 
-  auth,
+  authenticate,
   upload.single('photo'),
   validateCheckIn,
   async (req, res, next) => {
@@ -50,7 +50,7 @@ router.post('/check-in',
  * @access Private
  */
 router.post('/check-out',
-  auth,
+  authenticate,
   upload.single('photo'),
   validateCheckOut,
   async (req, res, next) => {
@@ -75,7 +75,7 @@ router.post('/check-out',
  * @desc 获取考勤列表
  * @access Private
  */
-router.get('/', auth, async (req, res, next) => {
+router.get('/', authenticate, async (req, res, next) => {
   try {
     const result = await attendanceProvider.getAttendances(req.query);
     res.status(200).json({
@@ -92,7 +92,7 @@ router.get('/', auth, async (req, res, next) => {
  * @desc 获取考勤详情
  * @access Private
  */
-router.get('/:id', auth, async (req, res, next) => {
+router.get('/:id', authenticate, async (req, res, next) => {
   try {
     const attendance = await attendanceProvider.getAttendance(req.params.id);
     res.status(200).json({
@@ -110,7 +110,7 @@ router.get('/:id', auth, async (req, res, next) => {
  * @access Private
  */
 router.post('/:id/work-content',
-  auth,
+  authenticate,
   upload.array('photos', 5),
   validateWorkContent,
   async (req, res, next) => {
@@ -137,7 +137,7 @@ router.post('/:id/work-content',
  * @desc 添加休息时间
  * @access Private
  */
-router.post('/:id/breaks', auth, validateBreak, async (req, res, next) => {
+router.post('/:id/breaks', authenticate, validateBreak, async (req, res, next) => {
   try {
     const breaks = await attendanceProvider.addBreak(req.params.id, req.body);
     res.status(200).json({
@@ -154,7 +154,7 @@ router.post('/:id/breaks', auth, validateBreak, async (req, res, next) => {
  * @desc 更新请假信息
  * @access Private
  */
-router.post('/:id/leave', auth, validateLeaveInfo, async (req, res, next) => {
+router.post('/:id/leave', authenticate, validateLeaveInfo, async (req, res, next) => {
   try {
     const leaveInfo = await attendanceProvider.updateLeaveInfo(req.params.id, req.body);
     res.status(200).json({
@@ -171,7 +171,7 @@ router.post('/:id/leave', auth, validateLeaveInfo, async (req, res, next) => {
  * @desc 记录异常
  * @access Private
  */
-router.post('/:id/exceptions', auth, validateException, async (req, res, next) => {
+router.post('/:id/exceptions', authenticate, validateException, async (req, res, next) => {
   try {
     const exceptions = await attendanceProvider.addException(req.params.id, req.body);
     res.status(200).json({
@@ -188,7 +188,7 @@ router.post('/:id/exceptions', auth, validateException, async (req, res, next) =
  * @desc 获取员工月度统计
  * @access Private
  */
-router.get('/stats/employee/:employeeId', auth, async (req, res, next) => {
+router.get('/stats/employee/:employeeId', authenticate, async (req, res, next) => {
   try {
     const { year, month } = req.query;
     const stats = await attendanceProvider.getEmployeeMonthlyStats(
@@ -210,7 +210,7 @@ router.get('/stats/employee/:employeeId', auth, async (req, res, next) => {
  * @desc 获取项目考勤统计
  * @access Private
  */
-router.get('/stats/project/:projectId', auth, async (req, res, next) => {
+router.get('/stats/project/:projectId', authenticate, async (req, res, next) => {
   try {
     const { startDate, endDate } = req.query;
     const stats = await attendanceProvider.getProjectAttendanceStats(
@@ -232,7 +232,7 @@ router.get('/stats/project/:projectId', auth, async (req, res, next) => {
  * @desc 获取考勤异常报告
  * @access Private
  */
-router.get('/reports/exceptions', auth, async (req, res, next) => {
+router.get('/reports/exceptions', authenticate, async (req, res, next) => {
   try {
     const exceptions = await attendanceProvider.getExceptionReport(req.query);
     res.status(200).json({

@@ -1,0 +1,44 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: construction-app-dev
+  labels:
+    app: construction-app-dev
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: construction-app-dev
+  template:
+    metadata:
+      labels:
+        app: construction-app-dev
+    spec:
+      containers:
+        - name: construction-app
+          image: node:18-alpine
+          command: ["/bin/sh", "-c"]
+          args:
+            - |
+              cd /app
+              npm install
+              npm run dev  # 确保package.json中有dev脚本，使用nodemon等工具
+          ports:
+            - containerPort: 3000
+          env:
+            - name: NODE_ENV
+              value: "development"
+            - name: PORT
+              value: "3000"
+            - name: MONGODB_URI
+              valueFrom:
+                secretKeyRef:
+                  name: construction-secrets
+                  key: mongodb-uri
+          volumeMounts:
+            - name: source-code
+              mountPath: /app
+      volumes:
+        - name: source-code
+          hostPath:
+            path: /path/to/your/code  # 需要替换为实际代码路径 

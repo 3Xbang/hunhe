@@ -4,7 +4,7 @@
 const express = require('express');
 const multer = require('multer');
 const { FinanceProvider } = require('../providers/finance.provider');
-const { auth } = require('../middlewares/auth');
+const { authenticate } = require('../middlewares/auth');
 const {
   validateCreateTransaction,
   validateUpdateTransaction,
@@ -25,7 +25,7 @@ const financeProvider = new FinanceProvider();
  * @access Private
  */
 router.post('/transactions',
-  auth,
+  authenticate,
   upload.fields([
     { name: 'invoice', maxCount: 1 },
     { name: 'contract', maxCount: 1 }
@@ -60,7 +60,7 @@ router.post('/transactions',
  * @desc 获取交易列表
  * @access Private
  */
-router.get('/transactions', auth, async (req, res, next) => {
+router.get('/transactions', authenticate, async (req, res, next) => {
   try {
     const result = await financeProvider.getTransactions(req.query);
     res.status(200).json({
@@ -77,7 +77,7 @@ router.get('/transactions', auth, async (req, res, next) => {
  * @desc 获取交易详情
  * @access Private
  */
-router.get('/transactions/:id', auth, async (req, res, next) => {
+router.get('/transactions/:id', authenticate, async (req, res, next) => {
   try {
     const transaction = await financeProvider.getTransaction(req.params.id);
     res.status(200).json({
@@ -95,7 +95,7 @@ router.get('/transactions/:id', auth, async (req, res, next) => {
  * @access Private
  */
 router.patch('/transactions/:id',
-  auth,
+  authenticate,
   upload.fields([
     { name: 'invoice', maxCount: 1 },
     { name: 'contract', maxCount: 1 }
@@ -134,7 +134,7 @@ router.patch('/transactions/:id',
  * @access Private
  */
 router.patch('/transactions/:id/status',
-  auth,
+  authenticate,
   validateTransactionStatus,
   async (req, res, next) => {
     try {
@@ -159,7 +159,7 @@ router.patch('/transactions/:id/status',
  * @access Private
  */
 router.patch('/transactions/:id/approval',
-  auth,
+  authenticate,
   validateTransactionApproval,
   async (req, res, next) => {
     try {
@@ -186,7 +186,7 @@ router.patch('/transactions/:id/approval',
  * @access Private
  */
 router.post('/budgets',
-  auth,
+  authenticate,
   validateCreateBudget,
   async (req, res, next) => {
     try {
@@ -209,7 +209,7 @@ router.post('/budgets',
  * @desc 获取预算列表
  * @access Private
  */
-router.get('/budgets', auth, async (req, res, next) => {
+router.get('/budgets', authenticate, async (req, res, next) => {
   try {
     const result = await financeProvider.getBudgets(req.query);
     res.status(200).json({
@@ -226,7 +226,7 @@ router.get('/budgets', auth, async (req, res, next) => {
  * @desc 获取预算详情
  * @access Private
  */
-router.get('/budgets/:id', auth, async (req, res, next) => {
+router.get('/budgets/:id', authenticate, async (req, res, next) => {
   try {
     const budget = await financeProvider.getBudget(req.params.id);
     res.status(200).json({
@@ -244,7 +244,7 @@ router.get('/budgets/:id', auth, async (req, res, next) => {
  * @access Private
  */
 router.patch('/budgets/:id',
-  auth,
+  authenticate,
   validateUpdateBudget,
   async (req, res, next) => {
     try {
@@ -271,7 +271,7 @@ router.patch('/budgets/:id',
  * @access Private
  */
 router.patch('/budgets/:id/approval',
-  auth,
+  authenticate,
   validateBudgetApproval,
   async (req, res, next) => {
     try {
@@ -297,7 +297,7 @@ router.patch('/budgets/:id/approval',
  * @desc 获取项目财务统计
  * @access Private
  */
-router.get('/stats/project/:projectId', auth, async (req, res, next) => {
+router.get('/stats/project/:projectId', authenticate, async (req, res, next) => {
   try {
     const stats = await financeProvider.getProjectFinanceStats(
       req.params.projectId,

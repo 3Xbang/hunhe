@@ -2,7 +2,7 @@
  * 供应商管理验证器
  */
 const { body, query, param } = require('express-validator');
-const { validate } = require('../validate');
+const { validate } = require('./validate');
 
 // 创建供应商验证
 exports.validateCreateSupplier = validate([

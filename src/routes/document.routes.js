@@ -4,7 +4,7 @@
 const express = require('express');
 const router = express.Router();
 const documentProvider = require('../providers/document.provider');
-const { auth, roles } = require('../middlewares/auth');
+const { authenticate, authorize } = require('../middlewares/auth');
 const upload = require('../middlewares/upload');
 const {
   validateCreateDocument,
@@ -19,8 +19,8 @@ const {
 
 // 创建文档
 router.post('/',
-  auth,
-  roles(['admin', 'project_manager', 'document_manager']),
+  authenticate,
+  authorize('admin', 'project_manager', 'document_manager'),
   upload.array('files', 10), // 最多允许上传10个文件
   validateCreateDocument,
   async (req, res, next) => {
@@ -41,7 +41,7 @@ router.post('/',
 
 // 获取文档列表
 router.get('/',
-  auth,
+  authenticate,
   validateQueryDocuments,
   async (req, res, next) => {
     try {
@@ -55,7 +55,7 @@ router.get('/',
 
 // 获取文档详情
 router.get('/:id',
-  auth,
+  authenticate,
   async (req, res, next) => {
     try {
       const document = await documentProvider.getDocument(req.params.id, req.user._id);
@@ -68,8 +68,8 @@ router.get('/:id',
 
 // 更新文档
 router.patch('/:id',
-  auth,
-  roles(['admin', 'project_manager', 'document_manager']),
+  authenticate,
+  authorize('admin', 'project_manager', 'document_manager'),
   upload.array('files', 10),
   validateUpdateDocument,
   async (req, res, next) => {
@@ -92,8 +92,8 @@ router.patch('/:id',
 
 // 删除文档
 router.delete('/:id',
-  auth,
-  roles(['admin', 'project_manager']),
+  authenticate,
+  authorize('admin', 'project_manager'),
   async (req, res, next) => {
     try {
       await documentProvider.deleteDocument(req.params.id, req.user._id);
@@ -106,8 +106,8 @@ router.delete('/:id',
 
 // 更新文档状态
 router.post('/:id/status',
-  auth,
-  roles(['admin', 'project_manager', 'document_manager']),
+  authenticate,
+  authorize('admin', 'project_manager', 'document_manager'),
   validateUpdateDocumentStatus,
   async (req, res, next) => {
     try {
@@ -127,8 +127,8 @@ router.post('/:id/status',
 
 // 更新文档权限
 router.post('/:id/permissions',
-  auth,
-  roles(['admin', 'project_manager']),
+  authenticate,
+  authorize('admin', 'project_manager'),
   validateUpdateDocumentPermissions,
   async (req, res, next) => {
     try {
@@ -146,8 +146,8 @@ router.post('/:id/permissions',
 
 // 添加文档版本
 router.post('/:id/versions',
-  auth,
-  roles(['admin', 'project_manager', 'document_manager']),
+  authenticate,
+  authorize('admin', 'project_manager', 'document_manager'),
   upload.array('files', 10),
   validateAddDocumentVersion,
   async (req, res, next) => {
@@ -169,8 +169,8 @@ router.post('/:id/versions',
 
 // 审批文档版本
 router.post('/:id/versions/:version/approve',
-  auth,
-  roles(['admin', 'project_manager']),
+  authenticate,
+  authorize('admin', 'project_manager'),
   async (req, res, next) => {
     try {
       const document = await documentProvider.approveVersion(
@@ -190,7 +190,7 @@ router.post('/:id/versions/:version/approve',
 
 // 借阅文档
 router.post('/:id/borrow',
-  auth,
+  authenticate,
   async (req, res, next) => {
     try {
       const document = await documentProvider.borrowDocument(
@@ -209,7 +209,7 @@ router.post('/:id/borrow',
 
 // 归还文档
 router.post('/:id/return/:borrowingId',
-  auth,
+  authenticate,
   async (req, res, next) => {
     try {
       const document = await documentProvider.returnDocument(
@@ -225,7 +225,7 @@ router.post('/:id/return/:borrowingId',
 
 // 记录文档阅读
 router.post('/:id/read',
-  auth,
+  authenticate,
   async (req, res, next) => {
     try {
       const document = await documentProvider.recordReading(
@@ -244,8 +244,8 @@ router.post('/:id/read',
 
 // 归档文档
 router.post('/:id/archive',
-  auth,
-  roles(['admin', 'project_manager', 'document_manager']),
+  authenticate,
+  authorize('admin', 'project_manager', 'document_manager'),
   async (req, res, next) => {
     try {
       const document = await documentProvider.archiveDocument(req.params.id);
@@ -258,8 +258,8 @@ router.post('/:id/archive',
 
 // 废止文档
 router.post('/:id/obsolete',
-  auth,
-  roles(['admin', 'project_manager']),
+  authenticate,
+  authorize('admin', 'project_manager'),
   async (req, res, next) => {
     try {
       const document = await documentProvider.obsoleteDocument(req.params.id);
@@ -272,7 +272,7 @@ router.post('/:id/obsolete',
 
 // 搜索文档
 router.get('/search',
-  auth,
+  authenticate,
   validateSearchDocuments,
   async (req, res, next) => {
     try {
@@ -286,8 +286,8 @@ router.get('/search',
 
 // 获取文档统计
 router.get('/stats/overview',
-  auth,
-  roles(['admin', 'project_manager', 'document_manager']),
+  authenticate,
+  authorize('admin', 'project_manager', 'document_manager'),
   validateDocumentStats,
   async (req, res, next) => {
     try {
@@ -301,8 +301,8 @@ router.get('/stats/overview',
 
 // 生成文档报告
 router.get('/:id/report',
-  auth,
-  roles(['admin', 'project_manager', 'document_manager']),
+  authenticate,
+  authorize('admin', 'project_manager', 'document_manager'),
   async (req, res, next) => {
     try {
       const report = await documentProvider.generateDocumentReport(

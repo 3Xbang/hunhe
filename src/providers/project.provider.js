@@ -7,7 +7,7 @@ const { Risk } = require('../models/risk.model');
 const { ResourceAllocation } = require('../models/resourceAllocation.model');
 const { Cost } = require('../models/cost.model');
 const { Document } = require('../models/document.model');
-const { AppError } = require('../utils/appError');
+const { AppError, notFoundError } = require('../utils/appError');
 const { uploadToS3 } = require('../utils/fileUpload');
 const { generatePDF } = require('../utils/pdfGenerator');
 
@@ -18,14 +18,21 @@ class ProjectProvider {
   async createProject(projectData) {
     // 处理附件上传
     if (projectData.attachments) {
-      for (let i = 0; i < projectData.attachments.length; i++) {
-        const attachment = projectData.attachments[i];
-        if (attachment.file) {
-          const result = await uploadToS3(attachment.file);
-          projectData.attachments[i].url = result.Location;
-          delete projectData.attachments[i].file;
-        }
-      }
+      const uploadedFiles = await Promise.all(
+        projectData.attachments.map(async (attachment) => {
+          const result = await uploadToS3(attachment.file, 'projects');
+          return {
+            name: attachment.name,
+            file: {
+              url: result.url,
+              key: result.key
+            },
+            uploadedBy: projectData.createdBy,
+            uploadedAt: new Date()
+          };
+        })
+      );
+      projectData.attachments = uploadedFiles;
     }
 
     const project = await Project.create(projectData);
@@ -40,70 +47,64 @@ class ProjectProvider {
       page = 1,
       limit = 10,
       status,
-      type,
-      client,
+      priority,
       startDate,
       endDate,
-      sortBy
+      search,
+      sort = '-createdAt'
     } = query;
 
-    const filter = {};
-
-    if (status) filter.status = status;
-    if (type) filter.type = type;
-    if (client) filter.client = client;
-    if (startDate || endDate) {
-      filter.plannedStartDate = {};
-      if (startDate) filter.plannedStartDate.$gte = new Date(startDate);
-      if (endDate) filter.plannedStartDate.$lte = new Date(endDate);
+    // 构建查询条件
+    const queryConditions = {};
+    if (status) queryConditions.status = status;
+    if (priority) queryConditions.priority = priority;
+    if (startDate) queryConditions.startDate = { $gte: new Date(startDate) };
+    if (endDate) queryConditions.plannedEndDate = { $lte: new Date(endDate) };
+    if (search) {
+      queryConditions.$or = [
+        { name: { $regex: search, $options: 'i' } },
+        { code: { $regex: search, $options: 'i' } },
+        { description: { $regex: search, $options: 'i' } }
+      ];
     }
 
-    let sort = { createdAt: -1 };
-    if (sortBy) {
-      switch (sortBy) {
-        case 'status':
-          sort = { status: 1 };
-          break;
-        case 'startDate':
-          sort = { plannedStartDate: 1 };
-          break;
-        case 'progress':
-          sort = { progress: -1 };
-          break;
-      }
-    }
-
-    const total = await Project.countDocuments(filter);
-    const projects = await Project.find(filter)
-      .populate('client', 'name')
-      .populate('manager', 'name')
-      .populate('team.user', 'name')
+    // 执行查询
+    const projects = await Project.find(queryConditions)
       .sort(sort)
       .skip((page - 1) * limit)
-      .limit(limit);
+      .limit(limit)
+      .populate('createdBy', 'name')
+      .populate('updatedBy', 'name')
+      .populate('team.user', 'name email');
+
+    // 获取总数
+    const total = await Project.countDocuments(queryConditions);
 
     return {
-      total,
-      totalPages: Math.ceil(total / limit),
-      currentPage: page,
-      projects
+      projects,
+      pagination: {
+        total,
+        page: parseInt(page),
+        pages: Math.ceil(total / limit),
+        limit: parseInt(limit)
+      }
     };
   }
 
   /**
-   * 获取单个项目
+   * 获取项目详情
    */
   async getProject(projectId) {
     const project = await Project.findById(projectId)
-      .populate('client', 'name contact')
-      .populate('manager', 'name phone email')
-      .populate('team.user', 'name position phone email')
-      .populate('attachments.uploadedBy', 'name')
       .populate('createdBy', 'name')
-      .populate('updatedBy', 'name');
+      .populate('updatedBy', 'name')
+      .populate('team.user', 'name email')
+      .populate('milestones')
+      .populate('risks')
+      .populate('costs');
 
     if (!project) {
-      throw new AppError('项目不存在', 404);
+      throw notFoundError('项目不存在');
     }
 
     return project;
@@ -113,36 +114,35 @@ class ProjectProvider {
    * 更新项目
    */
   async updateProject(projectId, updateData) {
-    const project = await Project.findById(projectId);
-    if (!project) {
-      throw new AppError('项目不存在', 404);
-    }
-
-    // 处理新附件上传
+    // 处理附件上传
     if (updateData.attachments) {
-      for (let i = 0; i < updateData.attachments.length; i++) {
-        const attachment = updateData.attachments[i];
-        if (attachment.file) {
-          const result = await uploadToS3(attachment.file);
-          updateData.attachments[i].url = result.Location;
-          delete updateData.attachments[i].file;
-        }
-      }
+      const uploadedFiles = await Promise.all(
+        updateData.attachments.map(async (attachment) => {
+          const result = await uploadToS3(attachment.file, 'projects');
+          return {
+            name: attachment.name,
+            file: {
+              url: result.url,
+              key: result.key
+            },
+            uploadedBy: updateData.updatedBy,
+            uploadedAt: new Date()
+          };
+        })
+      );
+      updateData.attachments = uploadedFiles;
     }
 
-    // 更新进度时自动更新状态
-    if (updateData.progress !== undefined) {
-      if (updateData.progress === 0) {
-        updateData.status = 'pending';
-      } else if (updateData.progress === 100) {
-        updateData.status = 'completed';
-      } else {
-        updateData.status = 'in_progress';
-      }
+    const project = await Project.findByIdAndUpdate(
+      projectId,
+      updateData,
+      { new: true, runValidators: true }
+    );
+
+    if (!project) {
+      throw notFoundError('项目不存在');
     }
 
-    Object.assign(project, updateData);
-    await project.save();
     return project;
   }
 
@@ -152,55 +152,120 @@ class ProjectProvider {
   async deleteProject(projectId) {
     const project = await Project.findById(projectId);
     if (!project) {
-      throw new AppError('项目不存在', 404);
+      throw notFoundError('项目不存在');
     }
 
-    // 检查项目是否可以删除
-    if (project.status !== 'pending') {
-      throw new AppError('只能删除未开始的项目', 400);
-    }
+    // 删除相关资源
+    await Promise.all([
+      Milestone.deleteMany({ project: projectId }),
+      Risk.deleteMany({ project: projectId }),
+      ResourceAllocation.deleteMany({ project: projectId }),
+      Cost.deleteMany({ project: projectId }),
+      Document.deleteMany({ project: projectId })
+    ]);
 
-    await project.remove();
-    return { message: '项目已删除' };
+    // 删除项目
+    await project.deleteOne();
+
+    return { message: '项目已成功删除' };
   }
 
   /**
    * 更新项目团队
    */
   async updateProjectTeam(projectId, teamData) {
-    const project = await Project.findById(projectId);
+    const project = await Project.findByIdAndUpdate(
+      projectId,
+      { $set: { team: teamData } },
+      { new: true, runValidators: true }
+    );
+
     if (!project) {
-      throw new AppError('项目不存在', 404);
+      throw notFoundError('项目不存在');
     }
 
-    project.team = teamData;
-    await project.save();
     return project;
   }
 
   /**
    * 更新项目进度
    */
-  async updateProjectProgress(projectId, { progress, progressNote }) {
+  async updateProjectProgress(projectId, progressData) {
+    const project = await Project.findByIdAndUpdate(
+      projectId,
+      { $set: { progress: progressData.progress } },
+      { new: true, runValidators: true }
+    );
+
+    if (!project) {
+      throw notFoundError('项目不存在');
+    }
+
+    return project;
+  }
+
+  /**
+   * 创建里程碑
+   */
+  async createMilestone(projectId, milestoneData) {
     const project = await Project.findById(projectId);
     if (!project) {
-      throw new AppError('项目不存在', 404);
+      throw notFoundError('项目不存在');
     }
 
-    project.progress = progress;
-    project.progressNote = progressNote;
+    const milestone = await Milestone.create({
+      ...milestoneData,
+      project: projectId
+    });
 
-    // 根据进度自动更新状态
-    if (progress === 0) {
-      project.status = 'pending';
-    } else if (progress === 100) {
-      project.status = 'completed';
-    } else {
-      project.status = 'in_progress';
+    return milestone;
+  }
+
+  /**
+   * 获取里程碑列表
+   */
+  async getMilestones(projectId) {
+    const project = await Project.findById(projectId);
+    if (!project) {
+      throw notFoundError('项目不存在');
     }
 
-    await project.save();
-    return project;
+    const milestones = await Milestone.find({ project: projectId })
+      .populate('createdBy', 'name');
+
+    return milestones;
+  }
+
+  /**
+   * 创建风险
+   */
+  async createRisk(projectId, riskData) {
+    const project = await Project.findById(projectId);
+    if (!project) {
+      throw notFoundError('项目不存在');
+    }
+
+    const risk = await Risk.create({
+      ...riskData,
+      project: projectId
+    });
+
+    return risk;
+  }
+
+  /**
+   * 获取风险列表
+   */
+  async getRisks(projectId) {
+    const project = await Project.findById(projectId);
+    if (!project) {
+      throw notFoundError('项目不存在');
+    }
+
+    const risks = await Risk.find({ project: projectId })
+      .populate('createdBy', 'name');
+
+    return risks;
   }
 
   /**
@@ -232,100 +297,6 @@ class ProjectProvider {
     ]);
 
     return { stats, timeline };
-  }
-
-  /**
-   * 里程碑管理方法
-   */
-  async createMilestone(projectId, milestoneData) {
-    const project = await Project.findById(projectId);
-    if (!project) {
-      throw new AppError('项目不存在', 404);
-    }
-
-    // 检查里程碑日期是否在项目期限内
-    const plannedDate = new Date(milestoneData.plannedDate);
-    if (plannedDate < project.plannedStartDate || plannedDate > project.plannedEndDate) {
-      throw new AppError('里程碑日期必须在项目期限内', 400);
-    }
-
-    const milestone = await Milestone.create({
-      ...milestoneData,
-      project: projectId
-    });
-
-    // 更新项目里程碑引用
-    project.milestones.push(milestone._id);
-    await project.save();
-
-    return milestone;
-  }
-
-  async getMilestones(projectId) {
-    const milestones = await Milestone.find({ project: projectId })
-      .populate('responsiblePerson', 'name')
-      .sort({ plannedDate: 1 });
-    return milestones;
-  }
-
-  async updateMilestone(milestoneId, updateData) {
-    const milestone = await Milestone.findByIdAndUpdate(
-      milestoneId,
-      updateData,
-      { new: true, runValidators: true }
-    );
-    if (!milestone) {
-      throw new AppError('里程碑不存在', 404);
-    }
-    return milestone;
-  }
-
-  /**
-   * 风险管理方法
-   */
-  async createRisk(projectId, riskData) {
-    const project = await Project.findById(projectId);
-    if (!project) {
-      throw new AppError('项目不存在', 404);
-    }
-
-    const risk = await Risk.create({
-      ...riskData,
-      project: projectId,
-      status: 'identified'
-    });
-
-    // 更新项目风险引用
-    project.risks.push(risk._id);
-    await project.save();
-
-    return risk;
-  }
-
-  async getRisks(projectId, query = {}) {
-    const { status, type, severity } = query;
-    const filter = { project: projectId };
-
-    if (status) filter.status = status;
-    if (type) filter.type = type;
-    if (severity) filter.severity = severity;
-
-    const risks = await Risk.find(filter)
-      .populate('assignedTo', 'name')
-      .sort({ createdAt: -1 });
-    return risks;
-  }
-
-  async updateRisk(riskId, updateData) {
-    const risk = await Risk.findByIdAndUpdate(
-      riskId,
-      updateData,
-      { new: true, runValidators: true }
-    );
-    if (!risk) {
-      throw new AppError('风险不存在', 404);
-    }
-    return risk;
   }
 
   /**

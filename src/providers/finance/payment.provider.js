@@ -5,7 +5,7 @@ const { Payment } = require('../../models/finance/payment.model');
 const { Invoice } = require('../../models/finance/invoice.model');
 const { Supplier } = require('../../models/supplier.model');
 const { generateCode } = require('../../utils/codeGenerator');
-const { ApiError } = require('../../utils/apiError');
+const { AppError } = require('../../utils/appError');
 const { uploadFile } = require('../../utils/fileUploader');
 
 class PaymentProvider {
@@ -19,12 +19,12 @@ class PaymentProvider {
     // 验证供应商
     const supplier = await Supplier.findById(paymentData.payee);
     if (!supplier) {
-      throw new ApiError(404, '供应商不存在');
+      throw new AppError(404, '供应商不存在');
     }
 
     // 检查供应商状态
     if (supplier.blacklist?.isBlacklisted) {
-      throw new ApiError(400, '该供应商已被列入黑名单');
+      throw new AppError(400, '该供应商已被列入黑名单');
     }
 
     // 验证关联发票
@@ -35,19 +35,19 @@ class PaymentProvider {
       });
 
       if (invoices.length !== paymentData.invoices.length) {
-        throw new ApiError(400, '部分发票不存在或不属于该供应商');
+        throw new AppError(400, '部分发票不存在或不属于该供应商');
       }
 
       // 检查发票状态
       const invalidInvoices = invoices.filter(inv => inv.status !== 'verified');
       if (invalidInvoices.length > 0) {
-        throw new ApiError(400, '存在未验证的发票');
+        throw new AppError(400, '存在未验证的发票');
       }
 
       // 验证付款金额不超过发票总额
       const totalInvoiceAmount = invoices.reduce((sum, inv) => sum + inv.totalAmount, 0);
       if (paymentData.amount > totalInvoiceAmount) {
-        throw new ApiError(400, '付款金额不能超过发票总额');
+        throw new AppError(400, '付款金额不能超过发票总额');
       }
     }
 
@@ -139,7 +139,7 @@ class PaymentProvider {
       .populate('approvals.approver', 'username');
 
     if (!payment) {
-      throw new ApiError(404, '付款记录不存在');
+      throw new AppError(404, '付款记录不存在');
     }
 
     return payment;
@@ -151,12 +151,12 @@ class PaymentProvider {
   async updatePayment(id, updateData, files) {
     const payment = await Payment.findById(id);
     if (!payment) {
-      throw new ApiError(404, '付款记录不存在');
+      throw new AppError(404, '付款记录不存在');
     }
 
     // 检查付款状态
     if (payment.status !== 'pending') {
-      throw new ApiError(400, '只能修改待审批状态的付款申请');
+      throw new AppError(400, '只能修改待审批状态的付款申请');
     }
 
     // 如果更新了发票，需要重新验证
@@ -167,17 +167,17 @@ class PaymentProvider {
       });
 
       if (invoices.length !== updateData.invoices.length) {
-        throw new ApiError(400, '部分发票不存在或不属于该供应商');
+        throw new AppError(400, '部分发票不存在或不属于该供应商');
       }
 
       const invalidInvoices = invoices.filter(inv => inv.status !== 'verified');
       if (invalidInvoices.length > 0) {
-        throw new ApiError(400, '存在未验证的发票');
+        throw new AppError(400, '存在未验证的发票');
       }
 
       const totalInvoiceAmount = invoices.reduce((sum, inv) => sum + inv.totalAmount, 0);
       if ((updateData.amount || payment.amount) > totalInvoiceAmount) {
-        throw new ApiError(400, '付款金额不能超过发票总额');
+        throw new AppError(400, '付款金额不能超过发票总额');
       }
     }
 
@@ -200,11 +200,11 @@ class PaymentProvider {
   async approvePayment(id, approvalData) {
     const payment = await Payment.findById(id);
     if (!payment) {
-      throw new ApiError(404, '付款记录不存在');
+      throw new AppError(404, '付款记录不存在');
     }
 
     if (payment.status !== 'pending') {
-      throw new ApiError(400, '只能审批待审核状态的付款申请');
+      throw new AppError(400, '只能审批待审核状态的付款申请');
     }
 
     payment.approvals.push({
@@ -225,11 +225,11 @@ class PaymentProvider {
   async confirmPayment(id, confirmData) {
     const payment = await Payment.findById(id);
     if (!payment) {
-      throw new ApiError(404, '付款记录不存在');
+      throw new AppError(404, '付款记录不存在');
     }
 
     if (payment.status !== 'approved') {
-      throw new ApiError(400, '只能确认已审批的付款申请');
+      throw new AppError(400, '只能确认已审批的付款申请');
     }
 
     payment.status = 'paid';

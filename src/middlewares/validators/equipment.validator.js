@@ -2,7 +2,7 @@
  * 设备管理验证器
  */
 const { body, query, param } = require('express-validator');
-const { validate } = require('../validate');
+const { validate } = require('./validate');
 
 // 创建设备验证
 exports.validateCreateEquipment = validate([

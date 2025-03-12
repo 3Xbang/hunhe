@@ -7,7 +7,7 @@ const {
   BusinessTrip,
   AttendanceRule
 } = require('../models/attendance.model');
-const { ApiError } = require('../utils/apiError');
+const { AppError, notFoundError } = require('../utils/appError');
 const { uploadFile } = require('../utils/fileUploader');
 const moment = require('moment');
 
@@ -29,13 +29,13 @@ class AttendanceProvider {
     });
 
     if (existingRecord && existingRecord.checkIn) {
-      throw new ApiError(400, '今日已打卡');
+      throw new AppError(400, '今日已打卡');
     }
 
     // 获取考勤规则
     const rule = await AttendanceRule.findOne({ isActive: true });
     if (!rule) {
-      throw new ApiError(404, '未找到有效的考勤规则');
+      throw new AppError(404, '未找到有效的考勤规则');
     }
 
     // 判断打卡类型
@@ -90,17 +90,17 @@ class AttendanceProvider {
     });
 
     if (!record || !record.checkIn) {
-      throw new ApiError(400, '未找到上班打卡记录');
+      throw new AppError(400, '未找到上班打卡记录');
     }
 
     if (record.checkOut) {
-      throw new ApiError(400, '已完成下班打卡');
+      throw new AppError(400, '已完成下班打卡');
     }
 
     // 获取考勤规则
     const rule = await AttendanceRule.findOne({ isActive: true });
     if (!rule) {
-      throw new ApiError(404, '未找到有效的考勤规则');
+      throw new AppError(404, '未找到有效的考勤规则');
     }
 
     // 判断打卡类型
@@ -157,7 +157,7 @@ class AttendanceProvider {
       .populate('exceptions.handledBy', 'name');
 
     if (!attendance) {
-      throw new ApiError(404, '考勤记录不存在');
+      throw new AppError(404, '考勤记录不存在');
     }
 
     return attendance;
@@ -225,7 +225,7 @@ class AttendanceProvider {
   async addWorkContent(attendanceId, contentData) {
     const attendance = await AttendanceRecord.findById(attendanceId);
     if (!attendance) {
-      throw new ApiError(404, '考勤记录不存在');
+      throw new AppError(404, '考勤记录不存在');
     }
 
     // 上传工作照片
@@ -245,7 +245,7 @@ class AttendanceProvider {
   async addBreak(attendanceId, breakData) {
     const attendance = await AttendanceRecord.findById(attendanceId);
     if (!attendance) {
-      throw new ApiError(404, '考勤记录不存在');
+      throw new AppError(404, '考勤记录不存在');
     }
 
     return await attendance.addBreak(breakData);
@@ -257,7 +257,7 @@ class AttendanceProvider {
   async addException(attendanceId, exceptionData) {
     const attendance = await AttendanceRecord.findById(attendanceId);
     if (!attendance) {
-      throw new ApiError(404, '考勤记录不存在');
+      throw new AppError(404, '考勤记录不存在');
     }
 
     return await attendance.addException(exceptionData);
@@ -269,7 +269,7 @@ class AttendanceProvider {
   async updateLeaveInfo(attendanceId, leaveData) {
     const attendance = await AttendanceRecord.findById(attendanceId);
     if (!attendance) {
-      throw new ApiError(404, '考勤记录不存在');
+      throw new AppError(404, '考勤记录不存在');
     }
 
     return await attendance.updateLeaveInfo(leaveData);
@@ -403,7 +403,7 @@ class AttendanceProvider {
 
     // 检查日期是否合理
     if (moment(startTime).isAfter(endTime)) {
-      throw new ApiError(400, '开始时间不能晚于结束时间');
+      throw new AppError(400, '开始时间不能晚于结束时间');
     }
 
     // 计算请假天数
@@ -426,7 +426,7 @@ class AttendanceProvider {
     });
 
     if (overlappingLeave) {
-      throw new ApiError(400, '该时间段内已有请假记录');
+      throw new AppError(400, '该时间段内已有请假记录');
     }
 
     // 处理附件上传
@@ -467,11 +467,11 @@ class AttendanceProvider {
 
     const leaveRecord = await LeaveRecord.findById(leaveId);
     if (!leaveRecord) {
-      throw new ApiError(404, '请假记录不存在');
+      throw new AppError(404, '请假记录不存在');
     }
 
     if (leaveRecord.status !== 'pending') {
-      throw new ApiError(400, '该请假申请已审批');
+      throw new AppError(400, '该请假申请已审批');
     }
 
     // 添加审批记录
@@ -520,15 +520,15 @@ class AttendanceProvider {
 
     const leaveRecord = await LeaveRecord.findById(leaveId);
     if (!leaveRecord) {
-      throw new ApiError(404, '请假记录不存在');
+      throw new AppError(404, '请假记录不存在');
     }
 
     if (leaveRecord.status === 'rejected') {
-      throw new ApiError(400, '已拒绝的请假不能取消');
+      throw new AppError(400, '已拒绝的请假不能取消');
     }
 
     if (moment().isAfter(moment(leaveRecord.startTime))) {
-      throw new ApiError(400, '已开始的请假不能取消');
+      throw new AppError(400, '已开始的请假不能取消');
     }
 
     // 更新请假记录
@@ -561,7 +561,7 @@ class AttendanceProvider {
 
     // 检查日期是否合理
     if (moment(startTime).isAfter(endTime)) {
-      throw new ApiError(400, '开始时间不能晚于结束时间');
+      throw new AppError(400, '开始时间不能晚于结束时间');
     }
 
     // 计算出差天数
@@ -584,7 +584,7 @@ class AttendanceProvider {
     });
 
     if (overlappingTrip) {
-      throw new ApiError(400, '该时间段内已有出差记录');
+      throw new AppError(400, '该时间段内已有出差记录');
     }
 
     // 创建出差记录
@@ -612,11 +612,11 @@ class AttendanceProvider {
 
     const businessTrip = await BusinessTrip.findById(tripId);
     if (!businessTrip) {
-      throw new ApiError(404, '出差记录不存在');
+      throw new AppError(404, '出差记录不存在');
     }
 
     if (businessTrip.status !== 'pending') {
-      throw new ApiError(400, '该出差申请已审批');
+      throw new AppError(400, '该出差申请已审批');
     }
 
     // 添加审批记录
@@ -663,15 +663,15 @@ class AttendanceProvider {
   async submitTripReport(tripId, reportData, files) {
     const businessTrip = await BusinessTrip.findById(tripId);
     if (!businessTrip) {
-      throw new ApiError(404, '出差记录不存在');
+      throw new AppError(404, '出差记录不存在');
     }
 
     if (businessTrip.status !== 'approved') {
-      throw new ApiError(400, '只能为已审批的出差提交报告');
+      throw new AppError(400, '只能为已审批的出差提交报告');
     }
 
     if (businessTrip.report && businessTrip.report.submittedAt) {
-      throw new ApiError(400, '出差报告已提交');
+      throw new AppError(400, '出差报告已提交');
     }
 
     // 处理附件上传

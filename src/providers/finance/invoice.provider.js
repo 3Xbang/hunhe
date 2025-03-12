@@ -4,7 +4,7 @@
 const { Invoice } = require('../../models/finance/invoice.model');
 const { Supplier } = require('../../models/supplier.model');
 const { generateCode } = require('../../utils/codeGenerator');
-const { ApiError } = require('../../utils/apiError');
+const { AppError } = require('../../utils/appError');
 const { uploadFile } = require('../../utils/fileUploader');
 const { validateInvoice } = require('../../utils/invoiceValidator');
 
@@ -19,12 +19,12 @@ class InvoiceProvider {
     // 验证供应商
     const supplier = await Supplier.findById(invoiceData.supplier);
     if (!supplier) {
-      throw new ApiError(404, '供应商不存在');
+      throw new AppError(404, '供应商不存在');
     }
 
     // 检查供应商状态
     if (supplier.blacklist?.isBlacklisted) {
-      throw new ApiError(400, '该供应商已被列入黑名单');
+      throw new AppError(400, '该供应商已被列入黑名单');
     }
 
     // 检查发票号是否重复
@@ -33,7 +33,7 @@ class InvoiceProvider {
       supplier: invoiceData.supplier
     });
     if (existingInvoice) {
-      throw new ApiError(400, '该供应商的发票号已存在');
+      throw new AppError(400, '该供应商的发票号已存在');
     }
 
     // 计算税额和总额
@@ -126,7 +126,7 @@ class InvoiceProvider {
       .populate('createdBy', 'username');
 
     if (!invoice) {
-      throw new ApiError(404, '发票不存在');
+      throw new AppError(404, '发票不存在');
     }
 
     return invoice;
@@ -138,12 +138,12 @@ class InvoiceProvider {
   async updateInvoice(id, updateData, files) {
     const invoice = await Invoice.findById(id);
     if (!invoice) {
-      throw new ApiError(404, '发票不存在');
+      throw new AppError(404, '发票不存在');
     }
 
     // 检查发票状态
     if (invoice.status !== 'pending') {
-      throw new ApiError(400, '只能修改待验证状态的发票');
+      throw new AppError(400, '只能修改待验证状态的发票');
     }
 
     // 如果更新了金额或税率，重新计算
@@ -173,11 +173,11 @@ class InvoiceProvider {
   async verifyInvoice(id, verifyData) {
     const invoice = await Invoice.findById(id);
     if (!invoice) {
-      throw new ApiError(404, '发票不存在');
+      throw new AppError(404, '发票不存在');
     }
 
     if (invoice.status !== 'pending') {
-      throw new ApiError(400, '发票已经验证过');
+      throw new AppError(400, '发票已经验证过');
     }
 
     // 调用发票验证服务
@@ -191,7 +191,7 @@ class InvoiceProvider {
       });
 
       if (!validationResult.valid) {
-        throw new ApiError(400, `发票验证失败: ${validationResult.message}`);
+        throw new AppError(400, `发票验证失败: ${validationResult.message}`);
       }
 
       invoice.status = 'verified';
@@ -200,7 +200,7 @@ class InvoiceProvider {
       
       return invoice;
     } catch (error) {
-      throw new ApiError(400, `发票验证失败: ${error.message}`);
+      throw new AppError(400, `发票验证失败: ${error.message}`);
     }
   }
 
@@ -210,15 +210,15 @@ class InvoiceProvider {
   async cancelInvoice(id, cancelData) {
     const invoice = await Invoice.findById(id);
     if (!invoice) {
-      throw new ApiError(404, '发票不存在');
+      throw new AppError(404, '发票不存在');
     }
 
     if (invoice.status === 'reimbursed') {
-      throw new ApiError(400, '已报销的发票不能作废');
+      throw new AppError(400, '已报销的发票不能作废');
     }
 
     if (invoice.status === 'cancelled') {
-      throw new ApiError(400, '发票已作废');
+      throw new AppError(400, '发票已作废');
     }
 
     invoice.status = 'cancelled';

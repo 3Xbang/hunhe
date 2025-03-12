@@ -1,165 +1,89 @@
 /**
  * 财务验证器
  */
-const { body } = require('express-validator');
+const { body, param, query } = require('express-validator');
 const { validate } = require('./validate');
+const { badRequestError } = require('../../utils/appError');
 
+/**
+ * 验证创建交易请求
+ */
 exports.validateCreateTransaction = validate([
   body('type')
-    .trim()
-    .notEmpty()
-    .withMessage('交易类型不能为空')
     .isIn(['income', 'expense'])
-    .withMessage('无效的交易类型'),
-
-  body('category')
-    .trim()
-    .notEmpty()
-    .withMessage('交易类别不能为空')
-    .isIn([
-      'project_payment',
-      'equipment_rental',
-      'material_sale',
-      'compensation',
-      'other_income',
-      'material_purchase',
-      'equipment_purchase',
-      'labor_cost',
-      'subcontract',
-      'equipment_maintenance',
-      'office_expense',
-      'travel_expense',
-      'insurance',
-      'tax',
-      'other_expense'
-    ])
-    .withMessage('无效的交易类别'),
-
+    .withMessage('交易类型必须是 income 或 expense'),
+  
   body('amount')
-    .notEmpty()
-    .withMessage('金额不能为空')
+    .isNumeric()
+    .withMessage('金额必须是数字')
     .isFloat({ min: 0 })
-    .withMessage('金额必须是正数'),
-
+    .withMessage('金额不能为负数'),
+  
   body('date')
-    .optional()
     .isISO8601()
-    .withMessage('无效的日期格式'),
-
+    .withMessage('日期格式无效'),
+  
   body('description')
     .trim()
     .notEmpty()
     .withMessage('交易描述不能为空')
     .isLength({ max: 500 })
     .withMessage('交易描述不能超过500个字符'),
-
-  body('project')
-    .notEmpty()
-    .withMessage('项目ID不能为空')
-    .isMongoId()
-    .withMessage('无效的项目ID'),
-
-  body('supplier')
+  
+  body('reference')
     .optional()
-    .isMongoId()
-    .withMessage('无效的供应商ID'),
-
-  body('equipment')
-    .optional()
-    .isMongoId()
-    .withMessage('无效的设备ID'),
-
-  body('paymentMethod')
     .trim()
-    .notEmpty()
-    .withMessage('支付方式不能为空')
-    .isIn(['cash', 'bank_transfer', 'check', 'credit_card', 'other'])
-    .withMessage('无效的支付方式'),
-
-  body('dueDate')
-    .optional()
-    .isISO8601()
-    .withMessage('无效的日期格式')
-    .custom((value, { req }) => {
-      if (value && new Date(value) <= new Date(req.body.date || Date.now())) {
-        throw new Error('到期日期必须晚于交易日期');
-      }
-      return true;
-    }),
-
+    .isLength({ max: 50 })
+    .withMessage('参考号不能超过50个字符'),
+  
   body('invoice.number')
     .optional()
     .trim()
-    .notEmpty()
-    .withMessage('发票号码不能为空'),
-
+    .isLength({ max: 50 })
+    .withMessage('发票号不能超过50个字符'),
+  
   body('invoice.date')
     .optional()
     .isISO8601()
-    .withMessage('无效的日期格式'),
-
-  body('invoice.amount')
-    .optional()
-    .isFloat({ min: 0 })
-    .withMessage('发票金额必须是正数'),
-
-  body('invoice.tax')
-    .optional()
-    .isFloat({ min: 0 })
-    .withMessage('税额必须是正数'),
-
+    .withMessage('发票日期格式无效'),
+  
   body('contract.number')
     .optional()
     .trim()
-    .notEmpty()
-    .withMessage('合同号码不能为空'),
-
-  body('contract.name')
+    .isLength({ max: 50 })
+    .withMessage('合同号不能超过50个字符'),
+  
+  body('contract.date')
     .optional()
-    .trim()
-    .notEmpty()
-    .withMessage('合同名称不能为空')
+    .isISO8601()
+    .withMessage('合同日期格式无效')
 ]);
 
+/**
+ * 验证更新交易请求
+ */
 exports.validateUpdateTransaction = validate([
+  param('id')
+    .isMongoId()
+    .withMessage('无效的交易ID'),
+  
   body('type')
     .optional()
-    .trim()
     .isIn(['income', 'expense'])
-    .withMessage('无效的交易类型'),
-
-  body('category')
-    .optional()
-    .trim()
-    .isIn([
-      'project_payment',
-      'equipment_rental',
-      'material_sale',
-      'compensation',
-      'other_income',
-      'material_purchase',
-      'equipment_purchase',
-      'labor_cost',
-      'subcontract',
-      'equipment_maintenance',
-      'office_expense',
-      'travel_expense',
-      'insurance',
-      'tax',
-      'other_expense'
-    ])
-    .withMessage('无效的交易类别'),
-
+    .withMessage('交易类型必须是 income 或 expense'),
+  
   body('amount')
     .optional()
+    .isNumeric()
+    .withMessage('金额必须是数字')
     .isFloat({ min: 0 })
-    .withMessage('金额必须是正数'),
-
+    .withMessage('金额不能为负数'),
+  
   body('date')
     .optional()
     .isISO8601()
-    .withMessage('无效的日期格式'),
-
+    .withMessage('日期格式无效'),
+  
   body('description')
     .optional()
     .trim()
@@ -167,174 +91,134 @@ exports.validateUpdateTransaction = validate([
     .withMessage('交易描述不能为空')
     .isLength({ max: 500 })
     .withMessage('交易描述不能超过500个字符'),
-
-  // ... 其他字段的验证规则与 validateCreateTransaction 相同，但都是可选的
+  
+  body('reference')
+    .optional()
+    .trim()
+    .isLength({ max: 50 })
+    .withMessage('参考号不能超过50个字符')
 ]);
 
+/**
+ * 验证交易状态更新请求
+ */
 exports.validateTransactionStatus = validate([
-  body('status')
-    .trim()
-    .notEmpty()
-    .withMessage('状态不能为空')
-    .isIn(['pending', 'partial', 'completed', 'cancelled'])
-    .withMessage('无效的状态')
-]);
-
-exports.validateTransactionApproval = validate([
-  body('status')
-    .trim()
-    .notEmpty()
-    .withMessage('审批状态不能为空')
-    .isIn(['approved', 'rejected'])
-    .withMessage('无效的审批状态'),
-
-  body('notes')
-    .optional()
-    .trim()
-    .isLength({ max: 500 })
-    .withMessage('审批备注不能超过500个字符')
-]);
-
-exports.validateCreateBudget = validate([
-  body('project')
-    .notEmpty()
-    .withMessage('项目ID不能为空')
+  param('id')
     .isMongoId()
-    .withMessage('无效的项目ID'),
-
-  body('year')
-    .notEmpty()
-    .withMessage('年份不能为空')
-    .isInt({ min: 2000, max: 2100 })
-    .withMessage('无效的年份'),
-
-  body('month')
-    .optional()
-    .isInt({ min: 1, max: 12 })
-    .withMessage('无效的月份'),
-
-  body('plannedIncome')
-    .isArray()
-    .withMessage('计划收入必须是数组'),
-
-  body('plannedIncome.*.category')
-    .notEmpty()
-    .withMessage('收入类别不能为空')
-    .isIn([
-      'project_payment',
-      'equipment_rental',
-      'material_sale',
-      'compensation',
-      'other_income'
-    ])
-    .withMessage('无效的收入类别'),
-
-  body('plannedIncome.*.amount')
-    .notEmpty()
-    .withMessage('计划收入金额不能为空')
-    .isFloat({ min: 0 })
-    .withMessage('计划收入金额必须是正数'),
-
-  body('plannedExpense')
-    .isArray()
-    .withMessage('计划支出必须是数组'),
-
-  body('plannedExpense.*.category')
-    .notEmpty()
-    .withMessage('支出类别不能为空')
-    .isIn([
-      'material_purchase',
-      'equipment_purchase',
-      'labor_cost',
-      'subcontract',
-      'equipment_maintenance',
-      'office_expense',
-      'travel_expense',
-      'insurance',
-      'tax',
-      'other_expense'
-    ])
-    .withMessage('无效的支出类别'),
-
-  body('plannedExpense.*.amount')
-    .notEmpty()
-    .withMessage('计划支出金额不能为空')
-    .isFloat({ min: 0 })
-    .withMessage('计划支出金额必须是正数'),
-
-  body('notes')
-    .optional()
-    .trim()
-    .isLength({ max: 1000 })
-    .withMessage('备注不能超过1000个字符')
-]);
-
-exports.validateUpdateBudget = validate([
-  body('plannedIncome')
-    .optional()
-    .isArray()
-    .withMessage('计划收入必须是数组'),
-
-  body('plannedIncome.*.category')
-    .optional()
-    .isIn([
-      'project_payment',
-      'equipment_rental',
-      'material_sale',
-      'compensation',
-      'other_income'
-    ])
-    .withMessage('无效的收入类别'),
-
-  body('plannedIncome.*.amount')
-    .optional()
-    .isFloat({ min: 0 })
-    .withMessage('计划收入金额必须是正数'),
-
-  body('plannedExpense')
-    .optional()
-    .isArray()
-    .withMessage('计划支出必须是数组'),
-
-  body('plannedExpense.*.category')
-    .optional()
-    .isIn([
-      'material_purchase',
-      'equipment_purchase',
-      'labor_cost',
-      'subcontract',
-      'equipment_maintenance',
-      'office_expense',
-      'travel_expense',
-      'insurance',
-      'tax',
-      'other_expense'
-    ])
-    .withMessage('无效的支出类别'),
-
-  body('plannedExpense.*.amount')
-    .optional()
-    .isFloat({ min: 0 })
-    .withMessage('计划支出金额必须是正数'),
-
-  body('notes')
-    .optional()
-    .trim()
-    .isLength({ max: 1000 })
-    .withMessage('备注不能超过1000个字符')
-]);
-
-exports.validateBudgetApproval = validate([
+    .withMessage('无效的交易ID'),
+  
   body('status')
-    .trim()
-    .notEmpty()
-    .withMessage('审批状态不能为空')
-    .isIn(['approved', 'rejected'])
-    .withMessage('无效的审批状态'),
+    .isIn(['pending', 'processing', 'completed', 'cancelled'])
+    .withMessage('无效的交易状态')
+]);
 
-  body('notes')
+/**
+ * 验证交易审批请求
+ */
+exports.validateTransactionApproval = validate([
+  param('id')
+    .isMongoId()
+    .withMessage('无效的交易ID'),
+  
+  body('approved')
+    .isBoolean()
+    .withMessage('approved 必须是布尔值'),
+  
+  body('comment')
     .optional()
     .trim()
     .isLength({ max: 500 })
-    .withMessage('审批备注不能超过500个字符')
+    .withMessage('审批意见不能超过500个字符')
+]);
+
+/**
+ * 验证创建预算请求
+ */
+exports.validateCreateBudget = validate([
+  body('year')
+    .isInt({ min: 2000, max: 2100 })
+    .withMessage('年份必须在2000-2100之间'),
+  
+  body('month')
+    .isInt({ min: 1, max: 12 })
+    .withMessage('月份必须在1-12之间'),
+  
+  body('department')
+    .trim()
+    .notEmpty()
+    .withMessage('部门不能为空'),
+  
+  body('type')
+    .isIn(['department', 'project'])
+    .withMessage('预算类型必须是 department 或 project'),
+  
+  body('items')
+    .isArray({ min: 1 })
+    .withMessage('预算项目不能为空'),
+  
+  body('items.*.name')
+    .trim()
+    .notEmpty()
+    .withMessage('预算项目名称不能为空'),
+  
+  body('items.*.type')
+    .isIn(['income', 'expense'])
+    .withMessage('预算项目类型必须是 income 或 expense'),
+  
+  body('items.*.amount')
+    .isNumeric()
+    .withMessage('预算金额必须是数字')
+    .isFloat({ min: 0 })
+    .withMessage('预算金额不能为负数')
+]);
+
+/**
+ * 验证更新预算请求
+ */
+exports.validateUpdateBudget = validate([
+  param('id')
+    .isMongoId()
+    .withMessage('无效的预算ID'),
+  
+  body('items')
+    .optional()
+    .isArray({ min: 1 })
+    .withMessage('预算项目不能为空'),
+  
+  body('items.*.name')
+    .optional()
+    .trim()
+    .notEmpty()
+    .withMessage('预算项目名称不能为空'),
+  
+  body('items.*.type')
+    .optional()
+    .isIn(['income', 'expense'])
+    .withMessage('预算项目类型必须是 income 或 expense'),
+  
+  body('items.*.amount')
+    .optional()
+    .isNumeric()
+    .withMessage('预算金额必须是数字')
+    .isFloat({ min: 0 })
+    .withMessage('预算金额不能为负数')
+]);
+
+/**
+ * 验证预算审批请求
+ */
+exports.validateBudgetApproval = validate([
+  param('id')
+    .isMongoId()
+    .withMessage('无效的预算ID'),
+  
+  body('approved')
+    .isBoolean()
+    .withMessage('approved 必须是布尔值'),
+  
+  body('comment')
+    .optional()
+    .trim()
+    .isLength({ max: 500 })
+    .withMessage('审批意见不能超过500个字符')
 ]); 

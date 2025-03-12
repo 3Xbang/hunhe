@@ -5,16 +5,24 @@
   "main": "src/app.js",
   "scripts": {
     "start": "node src/app.js",
-    "dev": "nodemon src/app.js",
-    "test": "jest --detectOpenHandles --forceExit",
-    "test:watch": "jest --watch",
-    "test:coverage": "jest --coverage",
-    "lint": "eslint src/",
+    "dev": "nodemon --max-old-space-size=200 src/app.js --watch src",
+    "test": "jest --maxWorkers=1",
+    "test:watch": "jest --watch --maxWorkers=1",
+    "test:coverage": "jest --coverage --maxWorkers=1",
+    "lint": "eslint src/ --fix",
     "format": "prettier --write \"src/**/*.js\"",
     "docs": "apidoc -i src/ -o docs/",
-    "docs:api": "node scripts/generate-api-docs.js",
-    "docs:test": "node scripts/generate-test-docs.js",
-    "docs:serve": "serve docs"
+    "docs:api": "node --max-old-space-size=200 scripts/generate-api-docs.js",
+    "docs:test": "node --max-old-space-size=200 scripts/generate-test-docs.js",
+    "docs:serve": "serve docs",
+    "update": "bash update-app.sh",
+    "dev-k8s": "bash hot-reload.sh",
+    "skaffold:install": "bash install-skaffold.sh",
+    "skaffold:dev": "bash skaffold-dev.sh",
+    "skaffold:deploy": "bash skaffold-deploy.sh",
+    "skaffold:status": "kubectl get pods,svc,ing -n construction",
+    "clean": "rm -rf node_modules/.cache && npm cache clean --force",
+    "lightweight-dev": "NODE_OPTIONS=\"--max-old-space-size=200\" nodemon src/app.js --ignore node_modules/ --ignore tests/"
   },
   "author": "Kingston",
   "license": "ISC",
@@ -23,18 +31,28 @@
     "cors": "^2.8.5",
     "dotenv": "^16.4.7",
     "express": "^4.18.2",
-    "express-validator": "^7.2.1",
     "helmet": "^7.2.0",
     "jsonwebtoken": "^9.0.2",
     "mongoose": "^7.8.6",
-    "swagger-ui-express": "^5.0.0",
-    "winston": "^3.17.0"
+    "morgan": "^1.10.0",
+    "multer": "^1.4.5-lts.1"
   },
   "devDependencies": {
-    "apidoc": "^1.2.0",
     "eslint": "^8.52.0",
     "jest": "^29.7.0",
-    "nodemon": "^3.0.1",
+    "nodemon": "^3.0.1"
+  },
+  "optionalDependencies": {
+    "aws-sdk": "^2.1692.0",
+    "express-validator": "^7.2.1",
+    "joi": "^17.13.3",
+    "moment": "^2.30.1",
+    "pdfkit": "^0.16.0",
+    "redis": "^4.7.0",
+    "swagger-ui-express": "^5.0.0",
+    "uuid": "^11.1.0",
+    "winston": "^3.17.0",
+    "apidoc": "^1.2.0",
     "prettier": "^3.0.3",
     "supertest": "^6.3.4"
   },
@@ -49,5 +67,8 @@
       "withGenerator": false,
       "withCompare": true
     }
+  },
+  "engines": {
+    "node": ">=16.0.0"
   }
 }

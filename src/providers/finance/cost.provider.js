@@ -4,7 +4,7 @@
 const { Cost } = require('../../models/finance/cost.model');
 const { Budget } = require('../../models/finance/budget.model');
 const { generateCode } = require('../../utils/codeGenerator');
-const { ApiError } = require('../../utils/apiError');
+const { AppError } = require('../../utils/appError');
 const { uploadFile } = require('../../utils/fileUploader');
 
 class CostProvider {
@@ -19,15 +19,15 @@ class CostProvider {
     if (costData.budgetItem) {
       const budget = await Budget.findById(costData.budgetItem);
       if (!budget) {
-        throw new ApiError(404, '预算项目不存在');
+        throw new AppError(404, '预算项目不存在');
       }
       
       // 检查预算状态和金额
       if (budget.status !== 'approved') {
-        throw new ApiError(400, '只能使用已审批的预算');
+        throw new AppError(400, '只能使用已审批的预算');
       }
       if (budget.usedAmount + costData.amount > budget.amount) {
-        throw new ApiError(400, '超出预算金额');
+        throw new AppError(400, '超出预算金额');
       }
 
       // 更新预算使用金额
@@ -117,7 +117,7 @@ class CostProvider {
       .populate('createdBy', 'username');
 
     if (!cost) {
-      throw new ApiError(404, '成本记录不存在');
+      throw new AppError(404, '成本记录不存在');
     }
 
     return cost;
@@ -129,19 +129,19 @@ class CostProvider {
   async updateCost(id, updateData, files) {
     const cost = await Cost.findById(id);
     if (!cost) {
-      throw new ApiError(404, '成本记录不存在');
+      throw new AppError(404, '成本记录不存在');
     }
 
     // 如果修改金额且关联了预算，需要重新计算预算使用情况
     if (updateData.amount && cost.budgetItem) {
       const budget = await Budget.findById(cost.budgetItem);
       if (!budget) {
-        throw new ApiError(404, '预算项目不存在');
+        throw new AppError(404, '预算项目不存在');
       }
 
       const amountDiff = updateData.amount - cost.amount;
       if (budget.usedAmount + amountDiff > budget.amount) {
-        throw new ApiError(400, '超出预算金额');
+        throw new AppError(400, '超出预算金额');
       }
 
       // 更新预算使用金额
@@ -169,7 +169,7 @@ class CostProvider {
   async deleteCost(id) {
     const cost = await Cost.findById(id);
     if (!cost) {
-      throw new ApiError(404, '成本记录不存在');
+      throw new AppError(404, '成本记录不存在');
     }
 
     // 如果关联了预算，需要更新预算使用金额

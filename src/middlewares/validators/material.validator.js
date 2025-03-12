@@ -1,8 +1,8 @@
 /**
- * 材料管理验证器
+ * 物料管理验证器
  */
 const { body, query, param } = require('express-validator');
-const { validate } = require('../validate');
+const { validate } = require('./validate');
 
 // 创建材料验证
 exports.validateCreateMaterial = validate([

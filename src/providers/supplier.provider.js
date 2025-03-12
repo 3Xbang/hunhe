@@ -3,7 +3,7 @@
  */
 const { Supplier } = require('../models/supplier.model');
 const { uploadFile } = require('../utils/fileUpload');
-const { ApiError } = require('../utils/apiError');
+const { AppError, notFoundError } = require('../utils/appError');
 const logger = require('../utils/logger');
 
 class SupplierProvider {
@@ -51,7 +51,7 @@ class SupplierProvider {
       return supplier;
     } catch (error) {
       logger.error('创建供应商失败:', error);
-      throw new ApiError(500, '创建供应商失败');
+      throw new AppError(500, '创建供应商失败');
     }
   }
 
@@ -115,7 +115,7 @@ class SupplierProvider {
       };
     } catch (error) {
       logger.error('获取供应商列表失败:', error);
-      throw new ApiError(500, '获取供应商列表失败');
+      throw new AppError(500, '获取供应商列表失败');
     }
   }
 
@@ -134,13 +134,13 @@ class SupplierProvider {
         .populate('blacklist.operator', 'username');
 
       if (!supplier) {
-        throw new ApiError(404, '供应商不存在');
+        throw new AppError(404, '供应商不存在');
       }
 
       return supplier;
     } catch (error) {
       logger.error('获取供应商详情失败:', error);
-      throw new ApiError(500, '获取供应商详情失败');
+      throw new AppError(500, '获取供应商详情失败');
     }
   }
 
@@ -191,13 +191,13 @@ class SupplierProvider {
       );
 
       if (!supplier) {
-        throw new ApiError(404, '供应商不存在');
+        throw new AppError(404, '供应商不存在');
       }
 
       return supplier;
     } catch (error) {
       logger.error('更新供应商信息失败:', error);
-      throw new ApiError(500, '更新供应商信息失败');
+      throw new AppError(500, '更新供应商信息失败');
     }
   }
 
@@ -208,7 +208,7 @@ class SupplierProvider {
     try {
       const supplier = await Supplier.findById(supplierId);
       if (!supplier) {
-        throw new ApiError(404, '供应商不存在');
+        throw new AppError(404, '供应商不存在');
       }
 
       supplier.evaluations.push({
@@ -220,7 +220,7 @@ class SupplierProvider {
       return supplier;
     } catch (error) {
       logger.error('添加供应商评价失败:', error);
-      throw new ApiError(500, '添加供应商评价失败');
+      throw new AppError(500, '添加供应商评价失败');
     }
   }
 
@@ -231,7 +231,7 @@ class SupplierProvider {
     try {
       const supplier = await Supplier.findById(supplierId);
       if (!supplier) {
-        throw new ApiError(404, '供应商不存在');
+        throw new AppError(404, '供应商不存在');
       }
 
       supplier.transactions.push({
@@ -243,7 +243,7 @@ class SupplierProvider {
       return supplier;
     } catch (error) {
       logger.error('记录交易失败:', error);
-      throw new ApiError(500, '记录交易失败');
+      throw new AppError(500, '记录交易失败');
     }
   }
 
@@ -262,13 +262,13 @@ class SupplierProvider {
       );
 
       if (!supplier) {
-        throw new ApiError(404, '供应商不存在');
+        throw new AppError(404, '供应商不存在');
       }
 
       return supplier;
     } catch (error) {
       logger.error('更新合作状态失败:', error);
-      throw new ApiError(500, '更新合作状态失败');
+      throw new AppError(500, '更新合作状态失败');
     }
   }
 
@@ -292,13 +292,13 @@ class SupplierProvider {
       );
 
       if (!supplier) {
-        throw new ApiError(404, '供应商不存在');
+        throw new AppError(404, '供应商不存在');
       }
 
       return supplier;
     } catch (error) {
       logger.error('更新黑名单状态失败:', error);
-      throw new ApiError(500, '更新黑名单状态失败');
+      throw new AppError(500, '更新黑名单状态失败');
     }
   }
 
@@ -360,7 +360,7 @@ class SupplierProvider {
       };
     } catch (error) {
       logger.error('获取供应商统计信息失败:', error);
-      throw new ApiError(500, '获取供应商统计信息失败');
+      throw new AppError(500, '获取供应商统计信息失败');
     }
   }
 
@@ -382,7 +382,7 @@ class SupplierProvider {
       return suppliers;
     } catch (error) {
       logger.error('获取过期文档供应商列表失败:', error);
-      throw new ApiError(500, '获取过期文档供应商列表失败');
+      throw new AppError(500, '获取过期文档供应商列表失败');
     }
   }
 }

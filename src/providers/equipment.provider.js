@@ -2,8 +2,8 @@
  * 设备管理服务提供者
  */
 const { Equipment } = require('../models/equipment.model');
-const { uploadFile } = require('../utils/fileUpload');
-const { ApiError } = require('../utils/apiError');
+const { uploadToS3, deleteFromS3 } = require('../utils/fileUpload');
+const { AppError, notFoundError } = require('../utils/appError');
 const logger = require('../utils/logger');
 
 class EquipmentProvider {
@@ -15,7 +15,7 @@ class EquipmentProvider {
       // 处理附件上传
       if (equipmentData.attachments) {
         const uploadedFiles = await Promise.all(
-          equipmentData.attachments.map(file => uploadFile(file))
+          equipmentData.attachments.map(file => uploadToS3(file))
         );
         equipmentData.attachments = uploadedFiles;
       }
@@ -24,7 +24,7 @@ class EquipmentProvider {
       return equipment;
     } catch (error) {
       logger.error('创建设备失败:', error);
-      throw new ApiError(500, '创建设备失败');
+      throw new AppError(500, '创建设备失败');
     }
   }
 
@@ -77,7 +77,7 @@ class EquipmentProvider {
       };
     } catch (error) {
       logger.error('获取设备列表失败:', error);
-      throw new ApiError(500, '获取设备列表失败');
+      throw new AppError(500, '获取设备列表失败');
     }
   }
 
@@ -93,13 +93,13 @@ class EquipmentProvider {
         .populate('maintenanceRecords.performer', 'username');
 
       if (!equipment) {
-        throw new ApiError(404, '设备不存在');
+        throw new AppError(404, '设备不存在');
       }
 
       return equipment;
     } catch (error) {
       logger.error('获取设备详情失败:', error);
-      throw new ApiError(500, '获取设备详情失败');
+      throw new AppError(500, '获取设备详情失败');
     }
   }
 
@@ -111,7 +111,7 @@ class EquipmentProvider {
       // 处理附件上传
       if (updateData.attachments) {
         const uploadedFiles = await Promise.all(
-          updateData.attachments.map(file => uploadFile(file))
+          updateData.attachments.map(file => uploadToS3(file))
         );
         updateData.attachments = uploadedFiles;
       }
@@ -123,13 +123,13 @@ class EquipmentProvider {
       );
 
       if (!equipment) {
-        throw new ApiError(404, '设备不存在');
+        throw new AppError(404, '设备不存在');
       }
 
       return equipment;
     } catch (error) {
       logger.error('更新设备信息失败:', error);
-      throw new ApiError(500, '更新设备信息失败');
+      throw new AppError(500, '更新设备信息失败');
     }
   }
 
@@ -140,12 +140,12 @@ class EquipmentProvider {
     try {
       const equipment = await Equipment.findById(equipmentId);
       if (!equipment) {
-        throw new ApiError(404, '设备不存在');
+        throw new AppError(404, '设备不存在');
       }
 
       // 检查设备是否可用
       if (equipment.status !== 'available') {
-        throw new ApiError(400, '设备当前不可用');
+        throw new AppError(400, '设备当前不可用');
       }
 
       // 添加使用记录
@@ -156,7 +156,7 @@ class EquipmentProvider {
       return equipment;
     } catch (error) {
       logger.error('记录设备使用失败:', error);
-      throw new ApiError(500, '记录设备使用失败');
+      throw new AppError(500, '记录设备使用失败');
     }
   }
 
@@ -167,13 +167,13 @@ class EquipmentProvider {
     try {
       const equipment = await Equipment.findById(equipmentId);
       if (!equipment) {
-        throw new ApiError(404, '设备不存在');
+        throw new AppError(404, '设备不存在');
       }
 
       // 处理附件上传
       if (maintenanceData.attachments) {
         const uploadedFiles = await Promise.all(
-          maintenanceData.attachments.map(file => uploadFile(file))
+          maintenanceData.attachments.map(file => uploadToS3(file))
         );
         maintenanceData.attachments = uploadedFiles;
       }
@@ -190,7 +190,7 @@ class EquipmentProvider {
       return equipment;
     } catch (error) {
       logger.error('记录设备维护失败:', error);
-      throw new ApiError(500, '记录设备维护失败');
+      throw new AppError(500, '记录设备维护失败');
     }
   }
 
@@ -210,13 +210,13 @@ class EquipmentProvider {
       );
 
       if (!equipment) {
-        throw new ApiError(404, '设备不存在');
+        throw new AppError(404, '设备不存在');
       }
 
       return equipment;
     } catch (error) {
       logger.error('更新设备状态失败:', error);
-      throw new ApiError(500, '更新设备状态失败');
+      throw new AppError(500, '更新设备状态失败');
     }
   }
 
@@ -272,7 +272,7 @@ class EquipmentProvider {
       };
     } catch (error) {
       logger.error('获取设备统计信息失败:', error);
-      throw new ApiError(500, '获取设备统计信息失败');
+      throw new AppError(500, '获取设备统计信息失败');
     }
   }
 }

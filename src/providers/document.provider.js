@@ -2,38 +2,57 @@
  * 文档管理服务提供者
  */
 const Document = require('../models/document.model');
-const { ApiError } = require('../utils/apiError');
-const { uploadFile, deleteFile } = require('../utils/fileUploader');
+const { AppError, notFoundError } = require('../utils/appError');
+const { uploadToS3, deleteFromS3, getSignedUrl } = require('../utils/fileUpload');
 const { generatePDF } = require('../utils/pdfGenerator');
 
 class DocumentProvider {
   /**
    * 创建文档
    */
-  async createDocument(documentData, files) {
-    // 处理文件上传
-    const uploadedFiles = [];
-    if (files && files.length > 0) {
-      for (const file of files) {
-        const uploadResult = await uploadFile(file, 'documents');
-        uploadedFiles.push({
-          filename: uploadResult.filename,
-          originalname: file.originalname,
-          path: uploadResult.path,
-          size: file.size,
-          mimetype: file.mimetype,
-          uploadedAt: new Date()
-        });
+  async createDocument(documentData, files = []) {
+    try {
+      // 处理文件上传
+      let uploadedFiles = [];
+      if (files && files.length > 0) {
+        for (const file of files) {
+          const uploadResult = await uploadToS3(file, 'documents');
+          uploadedFiles.push({
+            filename: file.originalname,
+            fileUrl: uploadResult.url,
+            fileKey: uploadResult.key,
+            fileSize: file.size,
+            fileType: file.mimetype,
+            uploadDate: new Date()
+          });
+        }
       }
+
+      // 创建文档
+      const document = await Document.create({
+        ...documentData,
+        files: uploadedFiles,
+        versions: [{
+          version: 1,
+          status: 'current',
+          files: uploadedFiles,
+          createdBy: documentData.createdBy,
+          createdAt: new Date()
+        }]
+      });
+
+      return document;
+    } catch (error) {
+      // 如果文档创建失败，删除已上传的文件
+      if (uploadedFiles && uploadedFiles.length > 0) {
+        for (const file of uploadedFiles) {
+          if (file.fileKey) {
+            await deleteFromS3(file.fileKey);
+          }
+        }
+      }
+      throw error;
     }
-
-    const document = new Document({
-      ...documentData,
-      files: uploadedFiles
-    });
-
-    await document.save();
-    return document;
   }
 
   /**
@@ -131,13 +150,13 @@ class DocumentProvider {
       .populate('versions.updatedBy', 'username');
 
     if (!document) {
-      throw new ApiError(404, '文档不存在');
+      throw new AppError(404, '文档不存在');
     }
 
     // 检查访问权限
     if (document.accessLevel === 'restricted' || 
         document.accessLevel === 'confidential') {
-      throw new ApiError(403, '您没有权限访问此文档');
+      throw new AppError(403, '您没有权限访问此文档');
     }
 
     return document;
@@ -162,7 +181,7 @@ class DocumentProvider {
       .populate('updatedBy', 'name');
 
     if (!document) {
-      throw new ApiError(404, '文档不存在');
+      throw new AppError(404, '文档不存在');
     }
 
     return document;
@@ -239,7 +258,7 @@ class DocumentProvider {
   async updateDocument(documentId, updateData) {
     const document = await Document.findById(documentId);
     if (!document) {
-      throw new ApiError(404, '文档不存在');
+      throw new AppError(404, '文档不存在');
     }
 
     Object.assign(document, updateData);
@@ -250,30 +269,45 @@ class DocumentProvider {
   /**
    * 上传新版本
    */
-  async uploadNewVersion(documentId, { file, version, description, changes, createdBy }) {
+  async uploadNewVersion(documentId, file, userData) {
     const document = await Document.findById(documentId);
     if (!document) {
-      throw new ApiError(404, '文档不存在');
+      throw new AppError('文档不存在', 404);
     }
 
     // 上传文件
-    const result = await uploadFile(file, 'documents');
+    const result = await uploadToS3(file, 'documents');
 
     // 创建新版本
-    const newVersion = {
-      version,
-      url: result.Location,
-      size: file.size,
-      format: file.mimetype,
-      description,
-      changes,
-      status: 'draft',
-      createdBy
+    const newVersion = document.versions.length + 1;
+    const newFile = {
+      filename: file.originalname,
+      fileUrl: result.url,
+      fileKey: result.key,
+      fileSize: file.size,
+      fileType: file.mimetype,
+      uploadDate: new Date()
     };
 
-    document.versions.push(newVersion);
-    document.currentVersion = version;
-    
+    // 更新当前版本状态
+    document.versions.forEach(v => {
+      if (v.status === 'current') {
+        v.status = 'archived';
+      }
+    });
+
+    // 添加新版本
+    document.versions.push({
+      version: newVersion,
+      status: 'current',
+      files: [newFile],
+      createdBy: userData.userId,
+      createdAt: new Date()
+    });
+
+    // 更新文档文件
+    document.files.push(newFile);
+
     await document.save();
     return document;
   }
@@ -284,12 +318,12 @@ class DocumentProvider {
   async approveVersion(documentId, version, { status, comments, approvedBy }) {
     const document = await Document.findById(documentId);
     if (!document) {
-      throw new ApiError(404, '文档不存在');
+      throw new AppError(404, '文档不存在');
     }
 
     const versionDoc = document.versions.find(v => v.version === version);
     if (!versionDoc) {
-      throw new ApiError(404, '版本不存在');
+      throw new AppError(404, '版本不存在');
     }
 
     versionDoc.status = status;
@@ -318,7 +352,7 @@ class DocumentProvider {
   async approveDocument(documentId, { step, status, comments, approvedBy }) {
     const document = await Document.findById(documentId);
     if (!document) {
-      throw new ApiError(404, '文档不存在');
+      throw new AppError(404, '文档不存在');
     }
 
     // 更新审批工作流
@@ -356,7 +390,7 @@ class DocumentProvider {
   async borrowDocument(documentId, { user, purpose, plannedReturnDate }) {
     const document = await Document.findById(documentId);
     if (!document) {
-      throw new ApiError(404, '文档不存在');
+      throw new AppError(404, '文档不存在');
     }
 
     // 检查是否已借阅
@@ -364,7 +398,7 @@ class DocumentProvider {
       b => b.user.toString() === user.toString() && b.status === 'borrowed'
     );
     if (existingBorrowing) {
-      throw new ApiError(400, '您已借阅此文档');
+      throw new AppError(400, '您已借阅此文档');
     }
 
     // 添加借阅记录
@@ -386,12 +420,12 @@ class DocumentProvider {
   async returnDocument(documentId, borrowingId) {
     const document = await Document.findById(documentId);
     if (!document) {
-      throw new ApiError(404, '文档不存在');
+      throw new AppError(404, '文档不存在');
     }
 
     const borrowing = document.borrowings.id(borrowingId);
     if (!borrowing) {
-      throw new ApiError(404, '借阅记录不存在');
+      throw new AppError(404, '借阅记录不存在');
     }
 
     borrowing.status = 'returned';
@@ -407,7 +441,7 @@ class DocumentProvider {
   async recordReading(documentId, { user, duration }) {
     const document = await Document.findById(documentId);
     if (!document) {
-      throw new ApiError(404, '文档不存在');
+      throw new AppError(404, '文档不存在');
     }
 
     document.readings.push({
@@ -426,7 +460,7 @@ class DocumentProvider {
   async archiveDocument(documentId) {
     const document = await Document.findById(documentId);
     if (!document) {
-      throw new ApiError(404, '文档不存在');
+      throw new AppError(404, '文档不存在');
     }
 
     document.status = 'archived';
@@ -440,7 +474,7 @@ class DocumentProvider {
   async obsoleteDocument(documentId) {
     const document = await Document.findById(documentId);
     if (!document) {
-      throw new ApiError(404, '文档不存在');
+      throw new AppError(404, '文档不存在');
     }
 
     document.status = 'obsolete';

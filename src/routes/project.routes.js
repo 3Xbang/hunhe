@@ -8,7 +8,7 @@ const { authenticate, authorize } = require('../middlewares/auth');
 const { validateProject, validateProgress } = require('../middlewares/validators/project.validator');
 const { ProjectProvider } = require('../providers/project.provider');
 const { AppError } = require('../utils/appError');
-const { upload } = require('../middlewares/upload');
+const upload = require('../middlewares/upload');
 const {
   validateCreateProject,
   validateUpdateProject,
@@ -21,9 +21,13 @@ const {
   validateUploadDocument,
   validateProjectQuery
 } = require('../middlewares/validators/project.validator');
+const { checkRole } = require('../middlewares/role.middleware');
 
 const router = express.Router();
 const projectProvider = new ProjectProvider();
+
+// 所有项目路由均需要身份验证
+router.use(authenticate);
 
 /**
  * @api {post} /projects 创建项目
@@ -33,7 +37,7 @@ const projectProvider = new ProjectProvider();
  */
 router.post(
   '/',
-  authenticate,
+  checkRole(['admin', 'manager']),
   upload.array('attachments'),
   validateCreateProject,
   async (req, res, next) => {
@@ -63,7 +67,7 @@ router.post(
 /**
  * @api {get} /projects 获取项目列表
  */
-router.get('/', authenticate, validateProjectQuery, async (req, res, next) => {
+router.get('/', validateProjectQuery, async (req, res, next) => {
   try {
     const result = await projectProvider.getProjects(req.query);
     res.json({
@@ -78,7 +82,7 @@ router.get('/', authenticate, validateProjectQuery, async (req, res, next) => {
 /**
  * @api {get} /projects/:id 获取项目详情
  */
-router.get('/:id', authenticate, async (req, res, next) => {
+router.get('/:id', async (req, res, next) => {
   try {
     const project = await projectProvider.getProject(req.params.id);
     res.json({
@@ -95,7 +99,7 @@ router.get('/:id', authenticate, async (req, res, next) => {
  */
 router.patch(
   '/:id',
-  authenticate,
+  checkRole(['admin', 'manager']),
   upload.array('attachments'),
   validateUpdateProject,
   async (req, res, next) => {
@@ -128,7 +132,7 @@ router.patch(
 /**
  * @api {delete} /projects/:id 删除项目
  */
-router.delete('/:id', authenticate, async (req, res, next) => {
+router.delete('/:id', checkRole(['admin']), async (req, res, next) => {
   try {
     const result = await projectProvider.deleteProject(req.params.id);
     res.json({
@@ -145,7 +149,7 @@ router.delete('/:id', authenticate, async (req, res, next) => {
  */
 router.patch(
   '/:id/team',
-  authenticate,
+  checkRole(['admin', 'manager']),
   validateUpdateTeam,
   async (req, res, next) => {
     try {
@@ -163,12 +167,18 @@ router.patch(
   }
 );
 
+router.delete(
+  '/:id/team/:userId',
+  checkRole(['admin', 'manager']),
+  projectController.removeTeamMember
+);
+
 /**
  * 项目进度管理路由
  */
 router.patch(
   '/:id/progress',
-  authenticate,
+  checkRole(['admin', 'manager']),
   validateUpdateProgress,
   async (req, res, next) => {
     try {
@@ -191,7 +201,7 @@ router.patch(
  */
 router.post(
   '/:id/milestones',
-  authenticate,
+  checkRole(['admin', 'manager']),
   validateCreateMilestone,
   async (req, res, next) => {
     try {
@@ -212,7 +222,7 @@ router.post(
   }
 );
 
-router.get('/:id/milestones', authenticate, async (req, res, next) => {
+router.get('/:id/milestones', async (req, res, next) => {
   try {
     const milestones = await projectProvider.getMilestones(req.params.id);
     res.json({
@@ -224,12 +234,17 @@ router.get('/:id/milestones', authenticate, async (req, res, next) => {
   }
 });
 
+router
+  .route('/:id/milestones/:milestoneId')
+  .patch(checkRole(['admin', 'manager']), projectController.updateMilestone)
+  .delete(checkRole(['admin', 'manager']), projectController.deleteMilestone);
+
 /**
  * 项目风险管理路由
  */
 router.post(
   '/:id/risks',
-  authenticate,
+  checkRole(['admin', 'manager']),
   validateCreateRisk,
   async (req, res, next) => {
     try {
@@ -250,7 +265,7 @@ router.post(
   }
 );
 
-router.get('/:id/risks', authenticate, async (req, res, next) => {
+router.get('/:id/risks', async (req, res, next) => {
   try {
     const risks = await projectProvider.getRisks(req.params.id);
     res.json({
@@ -267,7 +282,7 @@ router.get('/:id/risks', authenticate, async (req, res, next) => {
  */
 router.post(
   '/:id/resources',
-  authenticate,
+  checkRole(['admin', 'manager']),
   validateAllocateResource,
   async (req, res, next) => {
     try {
@@ -288,7 +303,7 @@ router.post(
   }
 );
 
-router.get('/:id/resources', authenticate, async (req, res, next) => {
+router.get('/:id/resources', async (req, res, next) => {
   try {
     const resources = await projectProvider.getResourceAllocations(req.params.id);
     res.json({
@@ -305,7 +320,7 @@ router.get('/:id/resources', authenticate, async (req, res, next) => {
  */
 router.post(
   '/:id/costs',
-  authenticate,
+  checkRole(['admin', 'manager']),
   validateRecordCost,
   async (req, res, next) => {
     try {
@@ -326,7 +341,7 @@ router.post(
   }
 );
 
-router.get('/:id/costs', authenticate, async (req, res, next) => {
+router.get('/:id/costs', async (req, res, next) => {
   try {
     const costs = await projectProvider.getCosts(req.params.id);
     res.json({
@@ -343,7 +358,7 @@ router.get('/:id/costs', authenticate, async (req, res, next) => {
  */
 router.post(
   '/:id/documents',
-  authenticate,
+  checkRole(['admin', 'manager']),
   upload.single('file'),
   validateUploadDocument,
   async (req, res, next) => {
@@ -370,7 +385,7 @@ router.post(
   }
 );
 
-router.get('/:id/documents', authenticate, async (req, res, next) => {
+router.get('/:id/documents', async (req, res, next) => {
   try {
     const documents = await projectProvider.getDocuments(req.params.id);
     res.json({
@@ -387,7 +402,6 @@ router.get('/:id/documents', authenticate, async (req, res, next) => {
  */
 router.get(
   '/:id/reports/:type',
-  authenticate,
   async (req, res, next) => {
     try {
       const report = await projectProvider.generateReport(
@@ -407,7 +421,7 @@ router.get(
 /**
  * 项目统计路由
  */
-router.get('/stats', authenticate, async (req, res, next) => {
+router.get('/stats', async (req, res, next) => {
   try {
     const stats = await projectProvider.getProjectStats();
     res.json({

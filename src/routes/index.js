@@ -1,22 +1,32 @@
+/**
+ * API路由索引
+ */
 const express = require('express');
+const projectRoutes = require('./project.routes');
+const authRoutes = require('./auth.routes');
+const userRoutes = require('./user.routes');
+const equipmentRoutes = require('./equipment.routes');
+const materialRoutes = require('./material.routes');
+const attendanceRoutes = require('./attendance.routes');
+
 const router = express.Router();
 
-// 引入财务管理相关路由
-const budgetRoutes = require('./finance/budget.routes');
-const costRoutes = require('./finance/cost.routes');
-const paymentRoutes = require('./finance/payment.routes');
-const invoiceRoutes = require('./finance/invoice.routes');
+// API信息
+router.get('/info', (req, res) => {
+  res.json({
+    name: '建筑管理系统',
+    version: '1.0.0',
+    environment: process.env.NODE_ENV,
+    time: new Date()
+  });
+});
 
-// 注册财务管理相关路由
-router.use('/finance/budgets', budgetRoutes);
-router.use('/finance/costs', costRoutes);
-router.use('/finance/payments', paymentRoutes);
-router.use('/finance/invoices', invoiceRoutes);
-
-// 引入文档管理路由
-const documentRoutes = require('./document.routes');
-
-// 注册文档管理路由
-router.use('/documents', documentRoutes);
+// 挂载各模块路由
+router.use('/auth', authRoutes);
+router.use('/users', userRoutes);
+router.use('/projects', projectRoutes);
+router.use('/equipment', equipmentRoutes);
+router.use('/materials', materialRoutes);
+router.use('/attendance', attendanceRoutes);
 
 module.exports = router; 

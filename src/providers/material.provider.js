@@ -3,7 +3,7 @@
  */
 const { Material } = require('../models/material.model');
 const { uploadFile } = require('../utils/fileUpload');
-const { ApiError } = require('../utils/apiError');
+const { AppError, notFoundError } = require('../utils/appError');
 const logger = require('../utils/logger');
 
 class MaterialProvider {
@@ -24,7 +24,7 @@ class MaterialProvider {
       return material;
     } catch (error) {
       logger.error('创建材料失败:', error);
-      throw new ApiError(500, '创建材料失败');
+      throw new AppError(500, '创建材料失败');
     }
   }
 
@@ -81,7 +81,7 @@ class MaterialProvider {
       };
     } catch (error) {
       logger.error('获取材料列表失败:', error);
-      throw new ApiError(500, '获取材料列表失败');
+      throw new AppError(500, '获取材料列表失败');
     }
   }
 
@@ -101,13 +101,13 @@ class MaterialProvider {
         .populate('outboundRecords.operator', 'username');
 
       if (!material) {
-        throw new ApiError(404, '材料不存在');
+        throw new AppError(404, '材料不存在');
       }
 
       return material;
     } catch (error) {
       logger.error('获取材料详情失败:', error);
-      throw new ApiError(500, '获取材料详情失败');
+      throw new AppError(500, '获取材料详情失败');
     }
   }
 
@@ -131,13 +131,13 @@ class MaterialProvider {
       );
 
       if (!material) {
-        throw new ApiError(404, '材料不存在');
+        throw new AppError(404, '材料不存在');
       }
 
       return material;
     } catch (error) {
       logger.error('更新材料信息失败:', error);
-      throw new ApiError(500, '更新材料信息失败');
+      throw new AppError(500, '更新材料信息失败');
     }
   }
 
@@ -148,7 +148,7 @@ class MaterialProvider {
     try {
       const material = await Material.findById(materialId);
       if (!material) {
-        throw new ApiError(404, '材料不存在');
+        throw new AppError(404, '材料不存在');
       }
 
       // 处理附件上传
@@ -169,7 +169,7 @@ class MaterialProvider {
       return material;
     } catch (error) {
       logger.error('材料入库失败:', error);
-      throw new ApiError(500, '材料入库失败');
+      throw new AppError(500, '材料入库失败');
     }
   }
 
@@ -180,12 +180,12 @@ class MaterialProvider {
     try {
       const material = await Material.findById(materialId);
       if (!material) {
-        throw new ApiError(404, '材料不存在');
+        throw new AppError(404, '材料不存在');
       }
 
       // 检查库存是否足够
       if (material.stock.quantity < outboundData.quantity) {
-        throw new ApiError(400, '库存不足');
+        throw new AppError(400, '库存不足');
       }
 
       // 更新库存
@@ -198,7 +198,7 @@ class MaterialProvider {
       return material;
     } catch (error) {
       logger.error('材料出库失败:', error);
-      throw new ApiError(500, '材料出库失败');
+      throw new AppError(500, '材料出库失败');
     }
   }
 
@@ -219,7 +219,7 @@ class MaterialProvider {
       return materials;
     } catch (error) {
       logger.error('获取库存预警列表失败:', error);
-      throw new ApiError(500, '获取库存预警列表失败');
+      throw new AppError(500, '获取库存预警列表失败');
     }
   }
 
@@ -278,7 +278,7 @@ class MaterialProvider {
       };
     } catch (error) {
       logger.error('获取材料统计信息失败:', error);
-      throw new ApiError(500, '获取材料统计信息失败');
+      throw new AppError(500, '获取材料统计信息失败');
     }
   }
 }

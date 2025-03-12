@@ -3,7 +3,7 @@
  */
 const express = require('express');
 const router = express.Router();
-const { auth, checkRole } = require('../middlewares/auth');
+const { authenticate, authorize } = require('../middlewares/auth');
 const { uploadMiddleware } = require('../middlewares/upload');
 const supplierProvider = require('../providers/supplier.provider');
 const {
@@ -24,8 +24,8 @@ const {
  * @apiVersion 1.0.0
  */
 router.post('/',
-  auth,
-  checkRole(['admin', 'manager']),
+  authenticate,
+  authorize(['admin', 'manager']),
   uploadMiddleware.fields([
     { name: 'businessLicense', maxCount: 1 },
     { name: 'taxInfo', maxCount: 1 },
@@ -80,7 +80,7 @@ router.post('/',
  * @apiVersion 1.0.0
  */
 router.get('/',
-  auth,
+  authenticate,
   validateQuerySuppliers,
   async (req, res, next) => {
     try {
@@ -103,7 +103,7 @@ router.get('/',
  * @apiVersion 1.0.0
  */
 router.get('/:id',
-  auth,
+  authenticate,
   async (req, res, next) => {
     try {
       const supplier = await supplierProvider.getSupplier(req.params.id);
@@ -124,8 +124,8 @@ router.get('/:id',
  * @apiVersion 1.0.0
  */
 router.patch('/:id',
-  auth,
-  checkRole(['admin', 'manager']),
+  authenticate,
+  authorize(['admin', 'manager']),
   uploadMiddleware.fields([
     { name: 'businessLicense', maxCount: 1 },
     { name: 'taxInfo', maxCount: 1 },
@@ -184,8 +184,8 @@ router.patch('/:id',
  * @apiVersion 1.0.0
  */
 router.post('/:id/evaluations',
-  auth,
-  checkRole(['admin', 'manager', 'project_manager']),
+  authenticate,
+  authorize(['admin', 'manager', 'project_manager']),
   validateAddEvaluation,
   async (req, res, next) => {
     try {
@@ -212,8 +212,8 @@ router.post('/:id/evaluations',
  * @apiVersion 1.0.0
  */
 router.post('/:id/transactions',
-  auth,
-  checkRole(['admin', 'manager', 'finance']),
+  authenticate,
+  authorize(['admin', 'manager', 'finance']),
   validateRecordTransaction,
   async (req, res, next) => {
     try {
@@ -240,8 +240,8 @@ router.post('/:id/transactions',
  * @apiVersion 1.0.0
  */
 router.patch('/:id/cooperation',
-  auth,
-  checkRole(['admin', 'manager']),
+  authenticate,
+  authorize(['admin', 'manager']),
   validateUpdateCooperationStatus,
   async (req, res, next) => {
     try {
@@ -266,8 +266,8 @@ router.patch('/:id/cooperation',
  * @apiVersion 1.0.0
  */
 router.patch('/:id/blacklist',
-  auth,
-  checkRole(['admin']),
+  authenticate,
+  authorize(['admin']),
   validateUpdateBlacklist,
   async (req, res, next) => {
     try {
@@ -293,8 +293,8 @@ router.patch('/:id/blacklist',
  * @apiVersion 1.0.0
  */
 router.post('/:id/qualifications',
-  auth,
-  checkRole(['admin', 'manager']),
+  authenticate,
+  authorize(['admin', 'manager']),
   uploadMiddleware.single('attachment'),
   validateAddQualification,
   async (req, res, next) => {
@@ -322,8 +322,8 @@ router.post('/:id/qualifications',
  * @apiVersion 1.0.0
  */
 router.get('/stats/overview',
-  auth,
-  checkRole(['admin', 'manager']),
+  authenticate,
+  authorize(['admin', 'manager']),
   async (req, res, next) => {
     try {
       const stats = await supplierProvider.getSupplierStats();
@@ -344,8 +344,8 @@ router.get('/stats/overview',
  * @apiVersion 1.0.0
  */
 router.get('/stats/expired-docs',
-  auth,
-  checkRole(['admin', 'manager']),
+  authenticate,
+  authorize(['admin', 'manager']),
   async (req, res, next) => {
     try {
       const suppliers = await supplierProvider.getExpiredDocSuppliers();

@@ -2,7 +2,7 @@
  * 文档管理验证器
  */
 const { body, query, param } = require('express-validator');
-const { validate } = require('./validator');
+const { validate } = require('./validate');
 
 /**
  * 创建文档验证
