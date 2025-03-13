@@ -13,6 +13,9 @@ const morgan = require('morgan');
 const path = require('path');
 const fs = require('fs');
 
+// 导入路由
+const apiRoutes = require('./routes/index');
+
 // 创建日志目录
 const logsDir = path.join(__dirname, '../logs');
 if (!fs.existsSync(logsDir)) {
@@ -76,6 +79,20 @@ app.get('/api/info', (req, res) => {
     time: new Date()
   });
 });
+
+// 添加根路径处理
+app.get('/', (req, res) => {
+  res.json({
+    status: 'success',
+    message: '建筑管理系统API服务',
+    version: '1.0.0',
+    docs: '/api/info'
+  });
+});
+
+// 挂载API路由
+app.use('/api', apiRoutes);
+console.log('API路由挂载成功');
 
 console.log('健康检查路由配置成功');
 
