@@ -70,6 +70,11 @@ app.get('/health', (req, res) => {
   });
 });
 
+// 添加简单测试路由
+app.get('/test', (req, res) => {
+  res.send('<h1>连接测试成功!</h1><p>如果您能看到此消息，说明网络连接正常工作。</p><p>时间: ' + new Date() + '</p>');
+});
+
 // 简单API端点
 app.get('/api/info', (req, res) => {
   res.json({
