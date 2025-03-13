@@ -43,4 +43,4 @@ fi
 
 # 启动应用
 echo "正在启动应用..."
-node src/app.js 
+node src/app.js
